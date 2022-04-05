@@ -11,7 +11,7 @@ jobs:
     name: Build project
     runs-on:
       - self-hosted
-      - ubuntu20.4
+      - ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
       with:
