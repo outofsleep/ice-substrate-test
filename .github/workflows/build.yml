@@ -38,8 +38,7 @@ jobs:
       env:
         WASM_BUILD_TOOLCHAIN: nightly-2022-01-16
     
-    - name: Check targets are installed correctly
-      run: rustup target list --installed
+    
     - name: Run all tests
       run: cargo test --all
     - name: Cleanup after tests
