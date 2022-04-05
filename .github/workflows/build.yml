@@ -19,6 +19,7 @@ jobs:
     - name: Install rust dependencies
       run: |
         scripts/init.sh
+        cargo --version
         rustc --version
         cargo +$WASM_BUILD_TOOLCHAIN --version
         rustc +$WASM_BUILD_TOOLCHAIN --version
