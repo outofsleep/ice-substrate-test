@@ -22,6 +22,7 @@ else
     source $HOME/.cargo/env
     export PATH=$HOME/.cargo/bin:$PATH
 fi
+source $HOME/.cargo/env
 rustup toolchain add $WASM_BUILD_TOOLCHAIN
 rustup default $WASM_BUILD_TOOLCHAIN
 rustup target add wasm32-unknown-unknown --toolchain $WASM_BUILD_TOOLCHAIN
