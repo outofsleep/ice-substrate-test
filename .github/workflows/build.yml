@@ -13,9 +13,10 @@ jobs:
       - self-hosted
       - ubuntu-20.4
     steps:
-    - uses: actions/checkout@master
+    - name: Checkout the source code
+      uses: actions/checkout@master
       with:
-        fetch-depth: 0
+        submodules: true
     - name: Install rust dependencies
       run: |
         sudo apt update
@@ -36,10 +37,7 @@ jobs:
         rustc +$WASM_BUILD_TOOLCHAIN --version
       env:
         WASM_BUILD_TOOLCHAIN: nightly-2022-01-16
-    - name: Checkout the source code
-      uses: actions/checkout@master
-      with:
-        submodules: true
+    
     - name: Check targets are installed correctly
       run: rustup target list --installed
     - name: Run all tests
