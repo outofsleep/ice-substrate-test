@@ -1,0 +1,6 @@
+[profile.release]
+panic = 'unwind'
+
+[workspace]
+# members = ['node', 'runtime/arctic','runtime/frost','runtiWme/common', "frame/simple-inflation"]
+members = ['node', 'runtime/arctic', 'runtime/frost',  "frame/simple-inflation"]
