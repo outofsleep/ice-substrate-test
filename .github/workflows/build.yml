@@ -19,8 +19,7 @@ jobs:
     - name: Install rust dependencies
       run: |
         scripts/init.sh
-        cargo --version
-        rustc --version
+        
       env:
         WASM_BUILD_TOOLCHAIN: nightly-2022-01-16
     - name: Checkout the source code
