@@ -9,7 +9,9 @@ on:
 jobs:
   build-project: 
     name: Build project
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - ubuntu20.4
     steps:
     - uses: actions/checkout@v2
       with:
