@@ -53,10 +53,6 @@ jobs:
         uses: actions/download-artifact@v2
         with: 
           name: ice-node
-      - name: Install zip
-        run: |
-          apt-get update
-          apt-get install zip unzip
       - name: Archive project content
         uses: thedoctor0/zip-release@master
         with:
