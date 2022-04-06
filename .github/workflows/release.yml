@@ -8,8 +8,8 @@ on:
         default: 'v0.1.0'
         required: true
 jobs:
-  build-project: 
-    name: build
+  build: 
+    name: Build project
     runs-on:
       - self-hosted
       - ubuntu-20.4
