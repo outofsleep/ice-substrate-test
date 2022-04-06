@@ -17,7 +17,7 @@ jobs:
       uses: actions/checkout@master
       with:
         submodules: true
-    - name: Install rust dependencies
+    - name: Test and Build optimized binary
       run: |
         sudo apt update
         sudo apt install -y git clang curl libssl-dev llvm libudev-dev
@@ -33,8 +33,6 @@ jobs:
         rustup target add wasm32-unknown-unknown --toolchain nightly
         cargo --version
         rustc --version
-        cargo +$WASM_BUILD_TOOLCHAIN --version
-        rustc +$WASM_BUILD_TOOLCHAIN --version
         cargo test --all
         cargo clean
         cargo build --release
