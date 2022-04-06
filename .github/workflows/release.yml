@@ -44,14 +44,19 @@ jobs:
 
   release:
     name: Release project
-    runs-on: ubuntu-latest
-    
+    runs-on:
+      - self-hosted
+      - ubuntu-20.4    
     needs: build
     steps:
       - name: Download ICE project content
         uses: actions/download-artifact@v2
         with: 
           name: ice-node
+      - name: Install zip
+        run: |
+          apt-get update
+          apt-get install zip unzip
       - name: Archive project content
         uses: thedoctor0/zip-release@master
         with:
