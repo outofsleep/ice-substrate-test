@@ -48,6 +48,10 @@ jobs:
       - ubuntu-20.4    
     needs: build
     steps:
+      - name: create directory
+        run: |
+          mkdir ice
+          cd ice
       - name: Download ICE project content
         uses: actions/download-artifact@v2
         with: 
