@@ -10,9 +10,7 @@ on:
 jobs:
   build: 
     name: Build project
-    runs-on:
-      - self-hosted
-      - ubuntu-20.4
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout the source code
       uses: actions/checkout@master
