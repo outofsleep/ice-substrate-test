@@ -14,7 +14,7 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable,nightly
+          toolchain: stable
           override: true
           target: wasm32-unknown-unknown
       - name: Install build-essentials
