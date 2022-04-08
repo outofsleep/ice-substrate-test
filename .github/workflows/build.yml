@@ -24,9 +24,6 @@ jobs:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source $HOME/.cargo/env
         rustup default stable
-        rustup update
-        rustup install nightly-2022-01-16
-        rustup target add wasm32-unknown-unknown --toolchain nightly-2022-01-16
         rustup show
         cargo --version
         rustc --version
