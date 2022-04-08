@@ -20,7 +20,7 @@ jobs:
     - name: Test and Build optimized binary
       run: |
         sudo apt update
-        sudo apt install -y git clang curl libssl-dev llvm libudev-dev 
+        sudo apt install -y git clang curl libssl-dev llvm libudev-dev build-essential
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source $HOME/.cargo/env
         rustup default stable
