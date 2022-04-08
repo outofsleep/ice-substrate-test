@@ -11,14 +11,14 @@ jobs:
     name: Cargo test
     runs-on: ubuntu-latest
     steps:
-      - name: Install build-essentials
-        run: sudo apt install -y curl build-essential cmake pkg-config libssl-dev openssl git clang libclang-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable,nightly
           override: true
           target: wasm32-unknown-unknown
+      - name: Install build-essentials
+        run: sudo apt install -y curl build-essential cmake pkg-config libssl-dev openssl git clang libclang-dev
       - uses: actions/checkout@v2
         with:
           submodules: 'true'
