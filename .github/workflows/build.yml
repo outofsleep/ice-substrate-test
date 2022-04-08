@@ -11,7 +11,7 @@ jobs:
     name: Cargo test
     runs-on: ubuntu-latest
     steps:
-      - name: install build-essentials
+      - name: Install build-essentials
         run: sudo apt install -y curl build-essential cmake pkg-config libssl-dev openssl git clang libclang-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -24,3 +24,11 @@ jobs:
           submodules: 'true'
       - name: Run cargo tests
         run: cargo test --verbose --workspace
+      - name: Build optimized binary
+        run: |
+          cargo clean
+          cargo build --release
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ice-node
+          path: target/release/ice-node
