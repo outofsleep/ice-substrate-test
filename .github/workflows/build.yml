@@ -11,7 +11,7 @@ jobs:
     name: Build project
     runs-on:
       - self-hosted
-      - ubuntu-20.4
+      - Linux
     steps:
     - name: Checkout the source code
       uses: actions/checkout@master
