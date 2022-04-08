@@ -11,6 +11,8 @@ jobs:
     name: Cargo test
     runs-on: ubuntu-latest
     steps:
+      - name: install build-essentials
+        run: apt install -y curl build-essential cmake pkg-config libssl-dev openssl git clang libclang-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
