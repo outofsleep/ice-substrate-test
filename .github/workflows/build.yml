@@ -21,14 +21,16 @@ jobs:
         toolchain: nightly-2022-01-16
         override: true
         target: wasm32-unknown-unknown
-    - name: Test and Build optimized binary
-      run: |
-        rustup show
-        cargo --version
-        rustc --version
-        cargo test --verbose --workspace
-        cargo clean
-          cargo build --release
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions/upload-artifact@v2
       with:
         name: ice-node
