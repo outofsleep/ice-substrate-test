@@ -31,6 +31,14 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Test and Build optimized binary
+      run: |
+        rustup show
+        cargo --version
+        rustc --version
+        cargo test --verbose --workspace
+        cargo clean
+        cargo build --release
     - uses: actions/upload-artifact@v2
       with:
         name: ice-node
