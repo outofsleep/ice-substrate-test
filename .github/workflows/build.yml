@@ -36,9 +36,7 @@ jobs:
         rustup show
         cargo --version
         rustc --version
-        cargo test --verbose --workspace
-        cargo clean
-        cargo build --release
+        cargo +nightly-2022-01-16 build --target wasm32-unknown-unknown --release
     - uses: actions/upload-artifact@v2
       with:
         name: ice-node
