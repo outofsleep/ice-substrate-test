@@ -15,22 +15,15 @@ jobs:
       uses: actions/checkout@master
       with:
         submodules: true
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-01-16
+        override: true
+        target: wasm32-unknown-unknown
     - name: Test and Build optimized binary
       run: |
-        sudo apt update
-        sudo apt install -y git clang curl libssl-dev llvm libudev-dev build-essential
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source $HOME/.cargo/env
-        rustup toolchain add nightly-2022-01-16
-        rustup default nightly-2022-01-16
-        rustup target add wasm32-unknown-unknown --toolchain nightly-2022-01-16
         rustup show
         cargo --version
         rustc --version
-        cargo test --all
-        cargo clean
-        cargo build --release
-    - uses: actions/upload-artifact@v2
-      with:
-        name: ice-node
-        path: target/release/ice-node
+        cargo test --verbose --workspace
