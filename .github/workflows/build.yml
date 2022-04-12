@@ -36,7 +36,7 @@ jobs:
         rustup show
         cargo --version
         rustc --version
-        cargo check --all
+        cargo test --all
     - uses: actions/upload-artifact@v2
       with:
         name: ice-node
