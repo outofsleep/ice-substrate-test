@@ -2,7 +2,7 @@ name: Srtool build
 
 env:
   SUBWASM_VERSION: 0.15.0
-  SRTOOL_TAG: 1.60.0
+  SRTOOL_TAG: nightly-2022-01-16
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       srtool_tag:
         description: The SRTOOL tag to use
         # keep the same as `env.SRTOOL_TAG`
-        default: 1.60.0
+        default: nightly-2022-01-16
         required: false
       ref:
         description: The ref to be used for the repo
