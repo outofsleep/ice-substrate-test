@@ -15,6 +15,7 @@ use pallet_grandpa::{
 };
 
 use frame_system::limits::{BlockLength, BlockWeights};
+use frame_support::{pallet_prelude::{ConstU32},};
 
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -22,14 +23,15 @@ use sp_core::{
 	crypto::{KeyTypeId},
 	OpaqueMetadata, H160, H256, U256,
 };
+
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, Dispatchable, IdentifyAccount, NumberFor,
-		PostDispatchInfoOf, Verify, ConvertInto
+		PostDispatchInfoOf, Verify, ConvertInto, OpaqueKeys, AccountIdConversion
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, MultiSignature,
+	ApplyExtrinsicResult, MultiSignature, FixedPointNumber, Perquintill
 };
 
 use sp_std::{marker::PhantomData, prelude::*};
@@ -40,16 +42,22 @@ use sp_version::RuntimeVersion;
 use frame_support::inherent::Vec;
 use sp_std::boxed::Box;
 
-use crate::currency::{ICY};
+pub mod constants;
+pub mod impls;
+pub use constants::{currency, time::*};
+pub use impls::DealWithFees;
+
+pub type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
+// A few exports that help ease life for downstream crates.
 
 // A few exports that help ease life for downstream crates.
 use fp_rpc::TransactionStatus;
 pub use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{FindAuthor, KeyOwnerProofSystem, Randomness},
+	traits::{FindAuthor, KeyOwnerProofSystem, Randomness, Currency},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
-		IdentityFee, Weight,
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}, Weight, ConstantMultiplier,
+		IdentityFee
 	},
 	ConsensusEngineId, PalletId, StorageValue,
 };
@@ -60,7 +68,7 @@ pub use pallet_balances::Call as BalancesCall;
 use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
 use pallet_evm::{Account as EVMAccount, EnsureAddressTruncated, HashedAddressMapping, Runner};
 pub use pallet_timestamp::Call as TimestampCall;
-use pallet_transaction_payment::CurrencyAdapter;
+use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
@@ -140,23 +148,6 @@ pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 // Prints debug output of the `contracts` pallet to stdout if the node is
 // started with `-lruntime::contracts=debug`.
 const CONTRACTS_DEBUG_OUTPUT: bool = true;
-
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
-pub mod currency {
-	use crate::Balance;
-
-	/// Constant values for the base number of indivisible units for balances
-	pub const MILLIICY: Balance = 1_000_000_000_000_000;
-	pub const ICY: Balance = 1_000 * MILLIICY;
-
-	pub const fn deposit(items: u32, bytes: u32) -> Balance {
-		(items as Balance + bytes as Balance) * MILLIICY / 1_000_000
-	}
-}
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -293,8 +284,6 @@ parameter_types! {
 	};
 }
 
-
-
 impl pallet_contracts::Config for Runtime {
 	type Time = Timestamp;
 	type Randomness = RandomnessCollectiveFlip;
@@ -324,21 +313,19 @@ parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
 
-
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type MinimumPeriod = MinimumPeriod;
-	type OnTimestampSet = SimpleInflation;
 	type WeightInfo = ();
-	// #[cfg(feature = "aura")]
-	// type OnTimestampSet = Aura;
-	// #[cfg(feature = "manual-seal")]
-	// type OnTimestampSet = ();
+	#[cfg(feature = "aura")]
+	type OnTimestampSet = (Aura,);
+	#[cfg(feature = "manual-seal")]
+	type OnTimestampSet = ();
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 500;
+	pub const ExistentialDeposit: u128 = currency::EXISTENTIAL_DEPOSIT; // 0.0001 ICY 
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
@@ -359,16 +346,44 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 1;
-	pub OperationalFeeMultiplier: u8 = 5;
+	// Rotate collator's spot each 6 hours.
+	pub Period: u32 = 6 * HOURS;
+	pub const Offset: u32 = 0;
+}
+
+impl pallet_session::Config for Runtime {
+	type Event = Event;
+	type ValidatorId = AccountId;
+	type ValidatorIdOf = ();
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+	type NextSessionRotation = ();
+	type SessionManager = ();
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = opaque::SessionKeys;
+	type WeightInfo = ();
+}
+
+impl pallet_authorship::Config for Runtime {
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type UncleGenerations = ConstU32<0>;
+	type FilterUncle = ();
+	type EventHandler = ();
+}
+
+parameter_types! {
+	pub const TransactionByteFee: Balance = 10 * currency::MILLICENTS;
+	pub const OperationalFeeMultiplier: u8 = 5;
+	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
+	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
+	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-	type OnChargeTransaction = CurrencyAdapter<Balances, ()>;
-	type TransactionByteFee = TransactionByteFee;
+	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
-	type WeightToFee = IdentityFee<Balance>;
-	type FeeMultiplierUpdate = ();
+	type WeightToFee = constants::fee::WeightToFee;
+	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -419,12 +434,6 @@ impl pallet_ethereum::Config for Runtime {
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
 
-
-pub const MILLICENTS: Balance = 1_000_000_000;
-pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
-pub const DOLLARS: Balance = 100 * CENTS;
-
-
 frame_support::parameter_types! {
     pub const AssetDeposit: Balance = 500 ;
 	pub const AssetAccountDeposit: Balance = 500 ;
@@ -452,7 +461,7 @@ impl pallet_assets::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
+	pub const MinVestedTransfer: Balance = 1 * currency::DOLLARS;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -487,7 +496,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1 * ICY;
+	pub const ProposalBondMinimum: Balance = 10 * currency::DOLLARS;
 	pub const SpendPeriod: BlockNumber = 1 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(1);
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
@@ -513,10 +522,22 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ();
 }
 
-impl pallet_simple_inflation::Config for Runtime {
-
+pub struct Beneficiary();
+impl pallet_simple_inflation::Beneficiary<NegativeImbalance> for Beneficiary {
+    fn treasury(reward: NegativeImbalance) {
+        Balances::resolve_creating(&TreasuryPalletId::get().into_account(), reward);
+    }
 }
 
+parameter_types! {
+    pub const IssuingAmount: Balance = 10 * currency::DOLLARS;
+}
+
+impl pallet_simple_inflation::Config for Runtime {
+	type Currency = Balances;
+	type Beneficiary = Beneficiary;
+	type IssuingAmount = IssuingAmount;
+}
 
 frame_support::parameter_types! {
 	pub BoundDivision: U256 = U256::from(1024);
@@ -578,7 +599,8 @@ construct_runtime!(
 	    Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
         Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>},
 		SimpleInflation: pallet_simple_inflation::{Pallet},
-
+		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
+		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 	}
 );
 
@@ -808,6 +830,7 @@ impl_runtime_apis! {
 				None
 			};
 
+			let is_transactional = false;
 			<Runtime as pallet_evm::Config>::Runner::call(
 				from,
 				to,
@@ -818,9 +841,11 @@ impl_runtime_apis! {
 				max_priority_fee_per_gas,
 				nonce,
 				access_list.unwrap_or_default(),
+				is_transactional,
 				config.as_ref().unwrap_or(<Runtime as pallet_evm::Config>::config()),
 			).map_err(|err| err.into())
 		}
+
 
 		fn create(
 			from: H160,
@@ -841,6 +866,7 @@ impl_runtime_apis! {
 				None
 			};
 
+			let is_transactional = false;
 			<Runtime as pallet_evm::Config>::Runner::create(
 				from,
 				data,
@@ -850,6 +876,7 @@ impl_runtime_apis! {
 				max_priority_fee_per_gas,
 				nonce,
 				access_list.unwrap_or_default(),
+				is_transactional,
 				config.as_ref().unwrap_or(<Runtime as pallet_evm::Config>::config()),
 			).map_err(|err| err.into())
 		}
@@ -960,6 +987,52 @@ impl_runtime_apis! {
 			None
 		}
 	}
+	
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn dispatch_benchmark(
+			config: frame_benchmarking::BenchmarkConfig
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+			use frame_system_benchmarking::Pallet as SystemBench;
+			
+			impl frame_system_benchmarking::Config for Runtime {}
+			let whitelist: Vec<TrackedStorageKey> = vec![];
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&config, &whitelist);
+
+			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_balances, Balances);
+            add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+			add_benchmark!(params, batches, pallet_evm, EVM);
+			add_benchmark!(params, batches, pallet_vesting, Vesting);
+
+			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+			Ok(batches)
+		}
+	    fn benchmark_metadata(extra: bool) -> (
+            Vec<frame_benchmarking::BenchmarkList>,
+            Vec<frame_support::traits::StorageInfo>,
+        ) {
+            use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+            use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;			
+
+            let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+            list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			list_benchmark!(list, extra, pallet_evm, EVM);
+			list_benchmark!(list, extra, pallet_vesting, Vesting);
+
+            let storage_info = AllPalletsWithSystem::storage_info();
+
+            return (list, storage_info)
+        }
+	}
+
 
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
@@ -976,41 +1049,7 @@ impl_runtime_apis! {
 			Executive::execute_block_no_check(block)
 		}
 	}
-	
-	#[cfg(feature = "runtime-benchmarks")]
-	impl frame_benchmarking::Benchmark<Block> for Runtime {
-		fn dispatch_benchmark(
-			config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-			use pallet_evm::Module as PalletEvmBench;
-			impl frame_system_benchmarking::Config for Runtime {}
 
-			let whitelist: Vec<TrackedStorageKey> = vec![];
-
-			let mut batches = Vec::<BenchmarkBatch>::new();
-			let params = (&config, &whitelist);
-
-			add_benchmark!(params, batches, pallet_evm, PalletEvmBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_vesting, Vesting);
-
-			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
-			Ok(batches)
-		}
-		fn benchmark_metadata(_extra: bool) -> (
-            Vec<frame_benchmarking::BenchmarkList>,
-            Vec<frame_support::traits::StorageInfo>,
-        ) {
-            use frame_benchmarking::BenchmarkList;
-            use frame_support::traits::StorageInfoTrait;
-
-            let list = Vec::<BenchmarkList>::new();
-
-            let storage_info = AllPalletsWithSystem::storage_info();
-
-            return (list, storage_info)
-        }
-	}
 
 	impl pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash>
 	for Runtime

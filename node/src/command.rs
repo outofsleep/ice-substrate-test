@@ -12,8 +12,8 @@ use crate::{
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
+use frame_benchmarking_cli::BenchmarkCmd;
 use log::info;
-use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
     ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
     NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
@@ -52,6 +52,7 @@ fn load_spec(
 		"dev" => Box::new(development_config()?),
 		"frost" => Box::new(testnet_config()?),
         "" | "frost-local-testnet" => Box::new(local_testnet_config()?),
+        "arctic-dev" => Box::new(get_dev_chain_spec(para_id)),
         "arctic" => Box::new(get_chain_spec(para_id)),
  
         path => {
@@ -67,7 +68,6 @@ fn load_spec(
 	
 	})
 }
-
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
@@ -199,13 +199,60 @@ pub fn run() -> Result<()> {
    
         }
         Some(Subcommand::Benchmark(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
-            let chain_spec = &runner.config().chain_spec;
-            if chain_spec.is_arctic() {
-                runner.sync_run(|config| cmd.run::<arctic_runtime::Block, arctic_service::Executor>(config))
-            } else {
-                runner.sync_run(|config| cmd.run::<frost_runtime::Block, frost::ExecutorDispatch>(config))
-            } 
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+            let is_arctic = chain_spec.is_arctic();
+            info!("Starting benchmarking");
+            match cmd {
+                BenchmarkCmd::Pallet(cmd) => {
+                    info!("Benchmarking for pallet");
+                    if cfg!(feature = "runtime-benchmarks") {
+                        info!("Runtime benchmarking enabled");
+                        if  is_arctic {
+                            info!("running pallet benchmarking for arctic");
+                            runner.sync_run(|config| cmd.run::<arctic_runtime::Block, arctic_service::Executor>(config))
+                        } else {
+                            info!("running pallet benchmarking for frost");
+                            runner.sync_run(|config| cmd.run::<frost_runtime::Block, frost::ExecutorDispatch>(config))
+                        } 
+                    } else {
+                        info!("error no benchmarking enabled");
+                        Err("Benchmarking wasn't enabled when building the node. \
+                You can enable it with `--features runtime-benchmarks`."
+                            .into())
+                    }
+                }
+                BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
+                    if is_arctic {
+                        let partials = arctic::new_partial::<arctic_service::RuntimeApi, arctic_service::Executor, _>(
+                            &config,
+                            arctic::build_import_queue,
+                        )?;
+                        cmd.run(partials.client)
+                    } else {
+                        let partials = frost::new_partial(&config, &cli)?;
+                        cmd.run(partials.client) 
+                    }
+                }),
+                BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
+                    if is_arctic{
+                        let partials = arctic::new_partial::<arctic_service::RuntimeApi, arctic_service::Executor, _>(
+                            &config,
+                            arctic::build_import_queue,
+                        )?;
+                        let db = partials.backend.expose_db();
+                        let storage = partials.backend.expose_storage();
+                        cmd.run(config, partials.client.clone(), db, storage)
+                    } else {
+                        let partials = frost::new_partial(&config, &cli)?;
+                        let db = partials.backend.expose_db();
+                        let storage = partials.backend.expose_storage();
+                        cmd.run(config, partials.client.clone(), db, storage)
+                    }
+
+                }),
+                BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+            }
 		}
         Some(Subcommand::ExportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -316,7 +363,7 @@ pub fn run() -> Result<()> {
                         &config,
                         arctic::build_import_queue,
                     )?;
-                    Ok((cmd.run(client, backend), task_manager))
+                    Ok((cmd.run(client, backend, None), task_manager))
                 })
             } else {
                 runner.async_run(|config| {
@@ -326,7 +373,7 @@ pub fn run() -> Result<()> {
                         backend,
                         ..
                     } = frost::new_partial(&config, &cli)?;
-                    Ok((cmd.run(client, backend), task_manager))
+                    Ok((cmd.run(client, backend, None), task_manager))
                 })
             }
         }
@@ -431,9 +478,6 @@ pub fn run() -> Result<()> {
                 info!("Relaychain Args: {}", cli.relaychain_args.join(" "));
                 let id = ParaId::from(para_id);
 
-                let parachain_account =
-                    AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
-
                 let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
                 let block: Block = generate_genesis_block(&config.chain_spec, state_version)
                     .map_err(|e| format!("{:?}", e))?;
@@ -447,7 +491,6 @@ pub fn run() -> Result<()> {
                 .map_err(|err| format!("Relay chain argument error: {}", err))?;
 
                 info!("Parachain id: {:?}", id);
-                info!("Parachain Account: {}", parachain_account);
                 info!("Parachain genesis state: {}", genesis_state);
                 info!(
                     "Is collating: {}",
