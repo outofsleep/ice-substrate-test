@@ -1,36 +1,39 @@
-name: Build
+name: build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - '**'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-project: 
-    name: Build project
-    runs-on: ubuntu-latest
+  build:
+    if: "!contains(github.event.commits[0].message, '[skip ci]')"
+    runs-on: [self-hosted, normal]
     steps:
-    - name: Checkout the source code
-      uses: actions/checkout@master
-      with:
-        submodules: true
-    - name: Test and Build optimized binary
-      run: |
-        sudo apt update
-        sudo apt install -y git clang curl libssl-dev llvm libudev-dev build-essential
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source $HOME/.cargo/env
-        rustup toolchain add nightly-2022-01-16
-        rustup default nightly-2022-01-16
-        rustup target add wasm32-unknown-unknown --toolchain nightly-2022-01-16
-        rustup show
-        cargo --version
-        rustc --version
-        cargo test --all
-        cargo clean
-        cargo build
-    - uses: actions/upload-artifact@v2
-      with:
-        name: ice-node
-        path: target/release/ice-node
+      - name: Check to latest commit
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-01-16
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          default: true
+      - name: Check All
+        run: make check-all
+      - name: Test All
+        run: |
+          make test-all
+      - name: clean runner workspace
+        run: |
+          rm -r *
