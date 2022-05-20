@@ -1,4 +1,4 @@
-name: build
+name: Build
 
 on:
   push:
@@ -6,15 +6,11 @@ on:
       - main
   pull_request:
     branches:
-      - '**'
+      - main
   workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
   build:
-    if: "!contains(github.event.commits[0].message, '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
       - name: Check to latest commit
@@ -29,11 +25,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Check All
-        run: make check-all
-      - name: Test All
+      - name: Test and Build optimized binary
         run: |
-          make test-all
-      - name: clean runner workspace
-        run: |
-          rm -r *
+          cargo test --all
+          cargo clean
+          cargo build
