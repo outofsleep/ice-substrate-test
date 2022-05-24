@@ -124,7 +124,7 @@ jobs:
       uses: actions/upload-artifact@master
       with:
         name: ${{ matrix.target }}
-        path: target/${{ matrix.target }}/release/arctic
+        path: target/${{ matrix.target }}/release/ice-node
 
   release:
     name: Release
@@ -161,7 +161,7 @@ jobs:
     - uses: actions/download-artifact@v2
       with:
         name: main-runtime
-        path: release/tmp/arctic
+        path: release/tmp/arctic/
 
     - id: compress_artifacts
       shell: bash
