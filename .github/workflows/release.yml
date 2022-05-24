@@ -1,11 +1,6 @@
 name: Release
 on:
    workflow_dispatch:
-    inputs:
-      release-version:
-        description: 'Release version tag'
-        default: 'v0.1.0'
-        required: true
 jobs:
   build-runtime:
     runs-on: ubuntu-latest
