@@ -5,11 +5,15 @@ on:
       srtool_tag:
         description: The SRTOOL tag to use
         default: 1.57.0
-        required: false
+        required: true
+      release-version:
+        description: 'Release version tag'
+        default: 'v0.4.3'
+        required: true
       ref:
         description: The ref to be used for the repo
         default: main
-        required: false
+        required: true
 jobs:
   build-runtime:
     runs-on: ubuntu-latest
@@ -136,10 +140,6 @@ jobs:
     steps:
     - name: Checkout the source code
       uses: actions/checkout@v2
-
-    - id: get_version
-      uses: battila7/get-version-action@v2
-
     - name: Create dir
       shell: bash
       run: |
@@ -172,14 +172,13 @@ jobs:
         tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-x86_64-unknown-linux-gnu.tar.gz -C tmp/x86_64/ ice-node
         tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-aarch64-unknown-linux-gnu.tar.gz -C tmp/aarch64/ ice-node
         cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
-        echo "${{ steps.get_version.outputs.version-without-v }}" > version
+        echo "${{ github.event.inputs.release-version }}" > version
         sha256sum *.tar.gz > sha256sum
         rm -rf tmp/
 
     - name: Upload assets to release
       uses: softprops/action-gh-release@v1
       with:
-        name: Arctic ${{ steps.get_version.outputs.version }}
-        body: ${{ steps.gen_release_body.outputs.RELEASE_BODY }}
+        name: Arctic ${{ github.event.inputs.release-version }}
         files: ./release/*
         draft: true
