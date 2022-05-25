@@ -160,7 +160,7 @@ jobs:
 
     - uses: actions/download-artifact@v2
       with:
-        name: main-runtime
+        name: arctic-runtime
         path: release/tmp/arctic/
 
     - id: compress_artifacts
