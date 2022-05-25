@@ -173,7 +173,7 @@ jobs:
         tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-aarch64-unknown-linux-gnu.tar.gz -C tmp/aarch64/ ice-node
         cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
         echo "${{ github.event.inputs.release-version }}" > version
-        sha256sum *.tar.gz > sha256sum
+        sha256sum *.tar.gz > arctic.sha256sum
         rm -rf tmp/
 
     - name: Upload assets to release
