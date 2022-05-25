@@ -10,23 +10,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-binary:
+    name: Build binary
+    runs-on: ubuntu-20.04
+   
     steps:
-      - name: Check to latest commit
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-01-16
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
-      - name: Test and Build optimized binary
-        run: |
-          cargo test --all
-          cargo clean
-          cargo build
+    - name: Checkout the source code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+   
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-01-16
+        target: x86_64-unknown-linux-gnu
+        components: rustfmt, clippy
+        default: true
+
+    - name: Install WASM target (for runtime building)
+      shell: bash
+      run: rustup target add wasm32-unknown-unknown --toolchain nightly-2022-01-16
+
+    - name: Build optimized binary
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --locked --target x86_64-unknown-linux-gnu
