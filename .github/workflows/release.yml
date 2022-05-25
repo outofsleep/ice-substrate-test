@@ -145,7 +145,7 @@ jobs:
         cd release/
         echo "::set-output name=arctic::$(jq -r '.core_version' tmp/arctic/arctic-info.json | awk '{print $1}')"
         chmod +x tmp/x86_64/ice-node
-        tar -czvf ice-node -C tmp/x86_64/ ice-node
+        tar -czvf ice-node.tar.gz -C tmp/x86_64/ ice-node
         cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
         sha256sum *.tar.gz > sha256sum
         rm -rf tmp/
