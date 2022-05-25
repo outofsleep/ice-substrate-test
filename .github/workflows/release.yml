@@ -85,32 +85,16 @@ jobs:
   build-binary:
     name: Build binary
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        target:
-        - x86_64-unknown-linux-gnu
-        - aarch64-unknown-linux-gnu
-
     steps:
     - name: Checkout the source code
       uses: actions/checkout@v2
       with:
         submodules: true
-
-    - name: Install ARM64 multilib
-      if: contains(matrix.target, 'aarch64')
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-multilib g++-multilib
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-        mkdir .cargo
-        printf '[target.aarch64-unknown-linux-gnu]\nlinker = "aarch64-linux-gnu-gcc"' > .cargo/config
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly-2022-01-16
-        target: ${{ matrix.target }}
+        target: x86_64-unknown-linux-gnu
         components: rustfmt, clippy
         default: true
 
@@ -122,13 +106,13 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release --locked --target ${{ matrix.target }}
+        args: --release --locked --target x86_64-unknown-linux-gnu
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@master
       with:
-        name: ${{ matrix.target }}
-        path: target/${{ matrix.target }}/release/ice-node
+        name: x86_64-unknown-linux-gnu
+        path: target/x86_64-unknown-linux-gnu/release/ice-node
 
   release:
     name: Release
@@ -145,35 +129,25 @@ jobs:
       run: |
         mkdir -p release/tmp/
         cd release/tmp/
-        mkdir  arctic x86_64 aarch64
+        mkdir  arctic x86_64
     - name: get x86_64 binary
       uses: actions/download-artifact@v2
       with:
         name: x86_64-unknown-linux-gnu
         path: release/tmp/x86_64/
-
-    - name: get aarch64 binary
-      uses: actions/download-artifact@v2
-      with:
-        name: aarch64-unknown-linux-gnu
-        path: release/tmp/aarch64/
-
     - uses: actions/download-artifact@v2
       with:
         name: arctic-runtime
         path: release/tmp/arctic/
-
     - id: compress_artifacts
       shell: bash
       run: |
         cd release/
         echo "::set-output name=arctic::$(jq -r '.core_version' tmp/arctic/arctic-info.json | awk '{print $1}')"
-        chmod +x tmp/x86_64/ice-node tmp/aarch64/ice-node
-        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-x86_64-unknown-linux-gnu.tar.gz -C tmp/x86_64/ ice-node
-        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-aarch64-unknown-linux-gnu.tar.gz -C tmp/aarch64/ ice-node
+        chmod +x tmp/x86_64/ice-node
+        tar -czvf ice-node -C tmp/x86_64/ ice-node
         cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
-        echo "${{ github.event.inputs.release-version }}" > version
-        sha256sum *.tar.gz > arctic.sha256sum
+        sha256sum *.tar.gz > sha256sum
         rm -rf tmp/
 
     - name: Upload assets to release
