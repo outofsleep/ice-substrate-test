@@ -167,11 +167,11 @@ jobs:
       shell: bash
       run: |
         cd release/
-        echo "::set-output name=main::$(jq -r '.core_version' tmp/arctic/main-info.json | awk '{print $1}')"
-        chmod +x tmp/x86_64/arctic tmp/aarch64/arctic
-        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-x86_64-unknown-linux-gnu.tar.gz -C tmp/x86_64/ arctic
-        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-aarch64-unknown-linux-gnu.tar.gz -C tmp/aarch64/ arctic
-        cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' main-info.json | awk '{print $1}')".tar.gz *;cd ../../
+        echo "::set-output name=arctic::$(jq -r '.core_version' tmp/arctic/arctic-info.json | awk '{print $1}')"
+        chmod +x tmp/x86_64/ice-node tmp/aarch64/ice-node
+        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-x86_64-unknown-linux-gnu.tar.gz -C tmp/x86_64/ ice-node
+        tar -czvf arctic-"${{ steps.get_version.outputs.version-without-v }}"-aarch64-unknown-linux-gnu.tar.gz -C tmp/aarch64/ ice-node
+        cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
         echo "${{ steps.get_version.outputs.version-without-v }}" > version
         sha256sum *.tar.gz > sha256sum
         rm -rf tmp/
@@ -179,7 +179,7 @@ jobs:
     - name: Upload assets to release
       uses: softprops/action-gh-release@v1
       with:
-        name: arctic ${{ steps.get_version.outputs.version }}
+        name: Arctic ${{ steps.get_version.outputs.version }}
         body: ${{ steps.gen_release_body.outputs.RELEASE_BODY }}
         files: ./release/*
         draft: true
