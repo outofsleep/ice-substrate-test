@@ -139,4 +139,4 @@ jobs:
           username: ${{ secrets.SSH_USER_RPC }}
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC }}
           port: ${{ secrets.SSH_PORT }}
-          script: sh /root/deploy/arctic-launch.json ${{ github.event.inputs.chain }}
+          script: sh /root/deploy/arctic-launch.json
