@@ -139,4 +139,4 @@ jobs:
           username: ${{ secrets.SSH_USER_RPC }}
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC }}
           port: ${{ secrets.SSH_PORT }}
-          script: nohup polkadot-launch /root/deploy/arctic-launch.json &
+          script: sh /root/deploy/start.sh
