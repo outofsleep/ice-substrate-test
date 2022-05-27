@@ -37,7 +37,7 @@ jobs:
         with:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
-          file: ${{ github.event.inputs.icenode }}.zip
+          file: ${{ github.event.inputs.icenode }}.tar.gz
           target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
@@ -78,7 +78,7 @@ jobs:
         with:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
-          file: ${{ github.event.inputs.icenode }}.zip
+          file: ${{ github.event.inputs.icenode }}.tar.gz
           target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
@@ -119,7 +119,7 @@ jobs:
         with:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
-          file: ${{ github.event.inputs.icenode }}.zip
+          file: ${{ github.event.inputs.icenode }}.tar.gz
           target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
