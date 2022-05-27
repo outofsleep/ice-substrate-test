@@ -15,7 +15,7 @@ on:
       chain:
         description: 'chain name'
         required: true
-        default: 'arctic'
+        default: 'arctic-dev'
 
 jobs:
        
@@ -102,7 +102,7 @@ jobs:
           script: sh /root/ice-node/validrestart.sh
           
   deploy-relay-parachain:
-    if: contains(github.event.inputs.chain, 'arctic')
+    if: contains(github.event.inputs.chain, 'arctic-dev')
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
