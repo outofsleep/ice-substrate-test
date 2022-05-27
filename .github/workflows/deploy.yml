@@ -38,16 +38,16 @@ jobs:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
           file: ${{ github.event.inputs.icenode }}.zip
-          target: ice-node.zip
+          target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
         run:
           ls
-      - name: unzip artifact
+      - name: untar artifact
         run:
-          unzip ice-node.zip
-      - name: remove zip
-        run: rm -rvf *.zip
+          tar-xvf ice-node.tar.gz
+      - name: remove tar
+        run: rm -rvf *.tar.gz
       - name: deploy with rsync
         run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/ice-node/
       - name: executing remote ssh commands using ssh key
@@ -79,16 +79,16 @@ jobs:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
           file: ${{ github.event.inputs.icenode }}.zip
-          target: ice-node.zip
+          target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
         run:
           ls
-      - name: unzip artifact
+      - name: untar artifact
         run:
-          unzip ice-node.zip
-      - name: remove zip
-        run: rm -rvf *.zip
+          tar -xvf ice-node.tar.gz
+      - name: remove tar
+        run: rm -rvf *.tar.gz
       
       - name: deploy with rsync
         run: rsync -avz ice* ${{ secrets.SSH_USER_VALID }}@${{ secrets.SSH_HOST_VALID }}:/root/ice-node/
@@ -100,6 +100,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_VALID }}
           port: ${{ secrets.SSH_PORT }}
           script: sh /root/ice-node/validrestart.sh
+          
   deploy-relay-parachain:
     if: contains(github.event.inputs.chain, 'arctic')
     runs-on: ubuntu-latest
@@ -119,16 +120,16 @@ jobs:
           repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
           file: ${{ github.event.inputs.icenode }}.zip
-          target: ice-node.zip
+          target: ice-node.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: ls artifact
         run:
           ls
-      - name: unzip artifact
+      - name: untar artifact
         run:
-          unzip ice-node.zip
-      - name: remove zip
-        run: rm -rvf *.zip
+          untar ice-node.tar.gz
+      - name: remove tar
+        run: rm -rvf *.tar.gz
       - name: deploy with rsync
         run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/ice-node/
       - name: executing remote ssh commands using ssh key
