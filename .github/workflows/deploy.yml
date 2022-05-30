@@ -136,8 +136,7 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            cd /${{ secrets.SSH_USER_RPC }}/deploy/
-            echo $NVM_DIR
+            cd /${{ secrets.SSH_USER_RPC }}/.nvm/
             nvm use 14.0.0
             node -v
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
