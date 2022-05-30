@@ -132,11 +132,12 @@ jobs:
         run: rm -rvf *.tar.gz
       - name: deploy with rsync
         run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/deploy/ice-substrate/
-      - name: executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@master
+      - name: ls -a via ssh
+        uses: fifsky/ssh-action@master
         with:
+          command: |
+            cd /root/deploy/
+            sh start.sh
           host: ${{ secrets.SSH_HOST_RPC }}
-          username: ${{ secrets.SSH_USER_RPC }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_RPC }}
-          port: ${{ secrets.SSH_PORT }}
-          script: sh /root/deploy/start.sh
+          user: root
+          key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
