@@ -137,7 +137,8 @@ jobs:
         with:
           command: |
             cd /root/deploy/
-            sh start.sh
+            kill $(ps aux | grep 'arctic' | awk '{print $2}')
+            nohup polkadot-launch /root/deploy/arctic-launch.json &
           host: ${{ secrets.SSH_HOST_RPC }}
           user: root
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
