@@ -137,6 +137,7 @@ jobs:
         with:
           command: |
             cd /root/deploy/
+            nvm use 14.0.0
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             nohup polkadot-launch /root/deploy/arctic-launch.json &
           host: ${{ secrets.SSH_HOST_RPC }}
