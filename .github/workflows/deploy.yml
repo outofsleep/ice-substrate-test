@@ -136,7 +136,7 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            cd /root/deploy/
+            cd /${{ secrets.SSH_USER_RPC }}/deploy/
             sh arctic-launch.sh
           host: ${{ secrets.SSH_HOST_RPC }}
           user: ${{ secrets.SSH_USER_RPC }}
