@@ -137,7 +137,10 @@ jobs:
         with:
           command: |
             cd /${{ secrets.SSH_USER_RPC }}/deploy/
-            sh arctic-launch.sh
+            kill $(ps aux | grep 'arctic' | awk '{print $2}')
+            kill $(ps aux | grep 'rococo-local' | awk '{print $2}')
+            nohup polkadot-launch arctic-launch.json & >/dev/null 2>&1
+            
           host: ${{ secrets.SSH_HOST_RPC }}
           user: ${{ secrets.SSH_USER_RPC }}
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
