@@ -132,13 +132,14 @@ jobs:
         run: rm -rvf *.tar.gz
       - name: deploy with rsync
         run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/deploy/ice-substrate/
-      - name: ls -a via ssh
+      - name: Run polkadot-launch
         uses: fifsky/ssh-action@master
         with:
           command: |
-            cd /root/deploy/
+            cd /${{ secrets.SSH_USER_RPC }}/deploy/
+            node -v
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             nohup polkadot-launch /root/deploy/arctic-launch.json &
           host: ${{ secrets.SSH_HOST_RPC }}
-          user: root
+          user: ${{ secrets.SSH_USER_RPC }}
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
