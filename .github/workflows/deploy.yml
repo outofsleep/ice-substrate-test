@@ -137,6 +137,9 @@ jobs:
         with:
           command: |
             cd /${{ secrets.SSH_USER_RPC }}/deploy/
+            wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+            command -v nvm
+            nvm install 14.0.0
             node -v
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             nohup polkadot-launch /root/deploy/arctic-launch.json &
