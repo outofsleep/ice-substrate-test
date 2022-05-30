@@ -136,9 +136,6 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            cd /${{ secrets.SSH_USER_RPC }}/.nvm/
-            nvm use 14.0.0
-            node -v
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             nohup polkadot-launch /root/deploy/arctic-launch.json &
           host: ${{ secrets.SSH_HOST_RPC }}
