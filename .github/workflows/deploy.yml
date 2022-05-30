@@ -136,9 +136,10 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
+            service arctic-launch stop
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             kill $(ps aux | grep 'rococo-local' | awk '{print $2}')
-            nohup polkadot-launch /root/deploy/arctic-launch.json &
+            service arctic-launch start
           host: ${{ secrets.SSH_HOST_RPC }}
           user: ${{ secrets.SSH_USER_RPC }}
           key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
