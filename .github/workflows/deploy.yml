@@ -138,6 +138,7 @@ jobs:
           command: |
             cd /${{ secrets.SSH_USER_RPC }}/deploy/
             wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+            export NVM_DIR="$HOME/.nvm"
             command -v nvm
             nvm install 14.0.0
             node -v
