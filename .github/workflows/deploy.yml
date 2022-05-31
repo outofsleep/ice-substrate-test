@@ -137,6 +137,7 @@ jobs:
         with:
           command: |
             cd /${{ secrets.SSH_USER_RPC }}/deploy/
+            systemctl stop arctic-launch.service
             kill $(ps aux | grep 'arctic' | awk '{print $2}')
             kill $(ps aux | grep 'rococo-local' | awk '{print $2}')
             systemctl start arctic-launch.service
