@@ -45,7 +45,7 @@ jobs:
           ls
       - name: untar artifact
         run:
-          tar-xvf ice-node.tar.gz
+          tar -xvf ice-node.tar.gz
       - name: remove tar
         run: rm -rvf *.tar.gz
       - name: deploy with rsync
