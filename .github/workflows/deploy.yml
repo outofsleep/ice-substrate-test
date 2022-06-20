@@ -15,7 +15,7 @@ on:
       chain:
         description: 'chain name'
         required: true
-        default: 'arctic-dev'
+        default: 'arctic'
 
 jobs:
        
