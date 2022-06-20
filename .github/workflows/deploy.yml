@@ -101,17 +101,17 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: sh /root/ice-node/validrestart.sh
           
-  deploy-relay-parachain:
-    if: contains(github.event.inputs.chain, 'arctic-dev')
+  deploy-parachain:
+    if: contains(github.event.inputs.chain, 'arctic')
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY_RPC }} 
+          key: ${{ secrets.SSH_PRIVATE_KEY_ARCTIC }} 
           known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
       - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST_RPC }} >> ~/.ssh/known_hosts
+        run: ssh-keyscan -H ${{ secrets.SSH_HOST_ARCTIC }} >> ~/.ssh/known_hosts
 
       - id: download-release-asset
         name: Download release asset  
@@ -130,18 +130,23 @@ jobs:
           tar -xvf ice-node.tar.gz
       - name: remove tar
         run: rm -rvf *.tar.gz
-      - name: deploy with rsync
-        run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/deploy/ice-substrate/
-      - name: Run polkadot-launch
+      - name: Copy with rsync
+        run: rsync -avz ice* ${{ secrets.SSH_USER_ARCTIC }}@${{ secrets.SSH_HOST_ARCTIC }}:/${{ secrets.SSH_USER_ARCTIC }}/deploy/
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      - name: Deploy and restart parachain service
         uses: fifsky/ssh-action@master
         with:
           command: |
-            cd /${{ secrets.SSH_USER_RPC }}/deploy/
-            systemctl stop arctic-launch.service
-            kill $(ps aux | grep 'arctic' | awk '{print $2}')
-            kill $(ps aux | grep 'rococo-local' | awk '{print $2}')
-            systemctl start arctic-launch.service
-            systemctl status arctic-launch.service
-          host: ${{ secrets.SSH_HOST_RPC }}
-          user: ${{ secrets.SSH_USER_RPC }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_RPC}}
+            cp -r /${{ secrets.SSH_USER_RPC }}/parachain /${{ secrets.SSH_USER_RPC }}/parachain-bkp-${{ steps.date.outputs.date }}
+            systemctl stop parachain.service
+            rm -rvf /${{ secrets.SSH_USER_RPC }}/parachain/ice-node
+            cp /${{ secrets.SSH_USER_RPC }}/deploy/ice-node /${{ secrets.SSH_USER_RPC }}/parachain
+            rm -rvf /${{ secrets.SSH_USER_RPC }}/deploy/ice-node
+            chmod +x /${{ secrets.SSH_USER_RPC }}/parachain/ice-node
+            systemctl start parachain.service
+            systemctl status parachain.service
+          host: ${{ secrets.SSH_HOST_ARCTIC }}
+          user: ${{ secrets.SSH_USER_ARCTIC }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_ARCTIC}}
