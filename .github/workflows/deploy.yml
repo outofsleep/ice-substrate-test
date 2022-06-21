@@ -130,8 +130,16 @@ jobs:
           tar -xvf ice-node.tar.gz
       - name: remove tar
         run: rm -rvf *.tar.gz
-      - name: Copy with rsync
-        run: rsync -avz ice* ${{ secrets.SSH_USER_ARCTIC }}@${{ secrets.SSH_HOST_ARCTIC }}:/root/deploy/
+      - name: rsync deployments
+        uses: burnett01/rsync-deployments@5.2
+        with:
+          switches: -avzr --delete
+          path: ice*
+          remote_path: ${{ secrets.SSH_USER_ARCTIC }}/deploy/
+          remote_host: ${{ secrets.SSH_HOST_ARCTIC }}
+          remote_user: ${{ secrets.SSH_USER_ARCTIC }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY_ARCTIC }}
+      
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
