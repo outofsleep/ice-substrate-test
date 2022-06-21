@@ -138,7 +138,7 @@ jobs:
           port: ${{ secrets.PORT }}
           key: ${{ secrets.SSH_PRIVATE_KEY_ARCTIC }}
           source: "ice-node"
-          target: "${{ secrets.SSH_USER_ARCTIC }}/deploy/"
+          target: "/${{ secrets.SSH_USER_ARCTIC }}/deploy/"
             
       - name: Get current date
         id: date
