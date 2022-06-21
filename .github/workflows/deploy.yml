@@ -143,18 +143,3 @@ jobs:
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
-      - name: Deploy and restart parachain service
-        uses: fifsky/ssh-action@master
-        with:
-          command: |
-            cp -r /${{ secrets.SSH_USER_ARCTIC }}/parachain /${{ secrets.SSH_USER_ARCTIC }}/parachain-bkp-${{ steps.date.outputs.date }}
-            systemctl stop parachain.service
-            rm -rvf /${{ secrets.SSH_USER_ARCTIC }}/parachain/ice-node
-            cp /${{ secrets.SSH_USER_ARCTIC }}/deploy/ice-node /${{ secrets.SSH_USER_ARCTIC }}/parachain
-            rm -rvf /${{ secrets.SSH_USER_ARCTIC }}/deploy/ice-node
-            chmod +x /${{ secrets.SSH_USER_ARCTIC }}/parachain/ice-node
-            systemctl start parachain.service
-            systemctl status parachain.service
-          host: ${{ secrets.SSH_HOST_ARCTIC }}
-          user: ${{ secrets.SSH_USER_ARCTIC }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_ARCTIC}}
