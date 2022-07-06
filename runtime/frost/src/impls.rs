@@ -1,4 +1,4 @@
-use crate::{Authorship, Balances, NegativeImbalance, Treasury};
+use crate::{Authorship, Balances, FeesSplit, NegativeImbalance, Treasury};
 use frame_support::traits::{Currency, Imbalance, OnUnbalanced};
 
 pub struct Author;
@@ -13,11 +13,13 @@ impl OnUnbalanced<NegativeImbalance> for Author {
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
+		let treasury_cut = FeesSplit::treasury_cut_percent();
+		let author_cut = 100 - treasury_cut;
+
 		if let Some(fees) = fees_then_tips.next() {
-			let mut split = fees.ration(80, 20);
+			let mut split = fees.ration(treasury_cut, author_cut);
 			if let Some(tips) = fees_then_tips.next() {
-				// for tips, if any, 80% to treasury, 20% to block author (though this can be anything)
-				tips.ration_merge_into(80, 20, &mut split);
+				tips.ration_merge_into(0, 100, &mut split);
 			}
 			Treasury::on_unbalanced(split.0);
 			Author::on_unbalanced(split.1);
@@ -27,18 +29,19 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 #[cfg(test)]
 mod tests {
+	use crate::sp_api_hidden_includes_construct_runtime::hidden_include::weights::WeightToFee;
 	use crate::{
-		constants::{currency::*, time::*, fee::*},
-		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights,
-		System, TargetBlockFullness, TransactionPayment
+		constants::{currency::*, time::*},
+		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights, System,
+		TargetBlockFullness, TransactionPayment,
 	};
+	use frame_support::weights::{DispatchClass, Weight};
 	use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 	use sp_runtime::{
 		assert_eq_error_rate,
 		traits::{Convert, One},
 		FixedPointNumber,
 	};
-	use frame_support::weights::{DispatchClass, Weight, WeightToFeePolynomial};
 
 	use separator::Separatable;
 
@@ -52,41 +55,47 @@ mod tests {
 		);
 		assert!(UNITS < u128::MAX);
 		assert_eq!(10u128.pow(18), UNITS);
-        assert_eq!(10u128.pow(16), CENTS);
-        assert_eq!(10u128.pow(13), MILLICENTS);
+		assert_eq!(10u128.pow(16), CENTS);
+		assert_eq!(10u128.pow(13), MILLICENTS);
 	}
 
 	#[test]
 	fn block_cost() {
 		let max_block_weight = RuntimeBlockWeights::get().max_block;
-		let raw_fee = WeightToFee::calc(&max_block_weight);
+		let raw_fee: _ =
+			<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(
+				&max_block_weight,
+			);
 
 		println!(
-			"Full Block weight == {} // WeightToFee(full_block) == {} plank",
-			max_block_weight,
-			raw_fee.separated_string(),
+			"Full Block weight == {} // WeightToFee(full_block) == {:?} plank",
+			max_block_weight, raw_fee,
 		);
 	}
 
 	#[test]
-	// Test that the fee for `MAXIMUM_BLOCK_WEIGHT` of weight has sane bounds.
-	fn full_block_fee_is_correct() {	
-        let max_block_weight = RuntimeBlockWeights::get().max_block;
-	
-		let full_block = WeightToFee::calc(&max_block_weight);
-        assert_eq!(full_block, 16000000000000000); // 0.16 ICY
-    
-		//assert!(full_block >= 1_000 * MILLICENTS);
-		//assert!(full_block <= 10_000 * CENTS);
+	fn full_block_fee_is_correct() {
+		let max_block_weight = RuntimeBlockWeights::get().max_block;
+
+		let full_block: u128 =
+			<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(
+				&max_block_weight,
+			);
+
+		assert!(full_block >= 10 * DOLLARS);
+		assert!(full_block <= 100 * DOLLARS);
 	}
 
 	#[test]
-	fn base_fee_is_within_bounds() {
+	fn base_fee_is_correct() {
 		let extrinsic_base_weight = frame_support::weights::constants::ExtrinsicBaseWeight::get();
-		let x = WeightToFee::calc(&extrinsic_base_weight);
+
+		let x: u128 = <Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(
+			&extrinsic_base_weight,
+		);
+
 		let y = CENTS / 10;
-        assert_eq!(x.max(y) - x.min(y), 999000000000000);
-		assert!(x.max(y) - x.min(y) < CENTS);
+		assert!(x.max(y) - x.min(y) < MILLICENTS);
 	}
 
 	fn max_normal() -> Weight {
@@ -181,7 +190,12 @@ mod tests {
 		// the weight is 1/100th bigger than target.
 		run_with_system_weight(target() * 101 / 100, || {
 			let next = runtime_multiplier_update(min_multiplier());
-			assert!(next > min_multiplier(), "{:?} !>= {:?}", next, min_multiplier());
+			assert!(
+				next > min_multiplier(),
+				"{:?} !>= {:?}",
+				next,
+				min_multiplier()
+			);
 		})
 	}
 
@@ -215,7 +229,7 @@ mod tests {
 				let next = runtime_multiplier_update(fm);
 				fm = next;
 				if fm == min_multiplier() {
-					break
+					break;
 				}
 				iterations += 1;
 			}
@@ -229,7 +243,10 @@ mod tests {
 		// `cargo test congested_chain_simulation -- --nocapture` to get some insight.
 
 		// almost full. The entire quota of normal transactions is taken.
-		let block_weight = RuntimeBlockWeights::get().get(DispatchClass::Normal).max_total.unwrap() - 100;
+		let block_weight = RuntimeBlockWeights::get()
+			.get(DispatchClass::Normal)
+			.max_total
+			.unwrap() - 100;
 
 		// Default substrate weight.
 		let tx_weight = frame_support::weights::constants::ExtrinsicBaseWeight::get();
@@ -249,7 +266,9 @@ mod tests {
 				fm = next;
 				iterations += 1;
 				let fee =
-					<Runtime as pallet_transaction_payment::Config>::WeightToFee::calc(&tx_weight);
+					<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(
+						&tx_weight,
+					);
 				let adjusted_fee = fm.saturating_mul_acc_int(fee);
 				println!(
 					"iteration {}, new fm = {:?}. Fee at this point is: {} units / {} millicents, \
@@ -324,5 +343,4 @@ mod tests {
 			})
 		});
 	}
-
 }
