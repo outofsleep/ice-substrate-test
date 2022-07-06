@@ -1,5 +1,5 @@
 #ice-substrate artifact deployment on dev environments
-name: ice-substrate artifact deployment on dev environments
+name: deploy
 
 on: 
   workflow_dispatch:
@@ -16,91 +16,8 @@ on:
         description: 'chain name'
         required: true
         default: 'arctic'
-
 jobs:
        
-  deploy-rpc:
-    if: contains(github.event.inputs.chain, 'frost')
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY_RPC }} 
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-      - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST_RPC }} >> ~/.ssh/known_hosts
-
-      - id: download-release-asset
-        name: Download release asset  
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          repo: "shivam-devops/ice-substrate-test"
-          version: ${{ github.event.inputs.tags }}
-          file: ${{ github.event.inputs.icenode }}.tar.gz
-          target: ice-node.tar.gz
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: ls artifact
-        run:
-          ls
-      - name: untar artifact
-        run:
-          tar -xvf ice-node.tar.gz
-      - name: remove tar
-        run: rm -rvf *.tar.gz
-      - name: deploy with rsync
-        run: rsync -avz ice* ${{ secrets.SSH_USER_RPC }}@${{ secrets.SSH_HOST_RPC }}:/root/ice-node/
-      - name: executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST_RPC }}
-          username: ${{ secrets.SSH_USER_RPC }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_RPC }}
-          port: ${{ secrets.SSH_PORT }}
-          script: sh /root/ice-node/rpcrestart.sh ${{ github.event.inputs.chain }}
-        
-  deploy-validator:
-    if: contains(github.event.inputs.chain, 'frost')
-    needs: deploy-rpc
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY_VALID }} 
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-      - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST_VALID }} >> ~/.ssh/known_hosts
-
-      - id: download-release-asset
-        name: Download release asset  
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          repo: "shivam-devops/ice-substrate-test"
-          version: ${{ github.event.inputs.tags }}
-          file: ${{ github.event.inputs.icenode }}.tar.gz
-          target: ice-node.tar.gz
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: ls artifact
-        run:
-          ls
-      - name: untar artifact
-        run:
-          tar -xvf ice-node.tar.gz
-      - name: remove tar
-        run: rm -rvf *.tar.gz
-      
-      - name: deploy with rsync
-        run: rsync -avz ice* ${{ secrets.SSH_USER_VALID }}@${{ secrets.SSH_HOST_VALID }}:/root/ice-node/
-      - name: executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST_VALID }}
-          username: ${{ secrets.SSH_USER_VALID }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_VALID }}
-          port: ${{ secrets.SSH_PORT }}
-          script: sh /root/ice-node/validrestart.sh
-          
   deploy-parachain:
     if: contains(github.event.inputs.chain, 'arctic')
     runs-on: ubuntu-latest
@@ -117,7 +34,7 @@ jobs:
         name: Download release asset  
         uses: dsaltares/fetch-gh-release-asset@master
         with:
-          repo: "shivam-devops/ice-substrate-test"
+          repo: "web3labs/ice-substrate"
           version: ${{ github.event.inputs.tags }}
           file: ${{ github.event.inputs.icenode }}.tar.gz
           target: ice-node.tar.gz
