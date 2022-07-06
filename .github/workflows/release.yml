@@ -4,7 +4,7 @@ on:
      inputs:
       srtool_tag:
         description: The SRTOOL tag to use
-        required: true
+        required: false
       release-version:
         description: 'Release version tag'
         default: 'v0.4.41'
