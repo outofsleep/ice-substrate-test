@@ -71,6 +71,7 @@ jobs:
       - name: Check the metadata diff
         shell: bash
         run: |
+          subwasm get wss://arctic-rpc.icenetwork.io:9944 --output arctic-live.wasm
           subwasm diff ${{ steps.srtool_build.outputs.wasm }} --chain-b ${{ matrix.chain }} || \
             echo "Subwasm call failed, check the logs. This is likely because ${{ matrix.chain }} is not known by subwasm" | \
             tee ${{ matrix.chain }}-diff.txt
