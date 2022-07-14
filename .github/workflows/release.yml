@@ -7,7 +7,6 @@ on:
         required: false
       release-version:
         description: 'Release version tag'
-        default: 'v0.4.32'
         required: true
       ref:
         description: The ref to be used for the repo
@@ -20,7 +19,7 @@ jobs:
       SUBWASM_VERSION: 0.17.0
     strategy:
       matrix:
-        chain: ["arctic"]
+        chain: ["arctic","snow-testnet"]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -143,15 +142,17 @@ jobs:
       run: |
         cd release/
         echo "::set-output name=arctic::$(jq -r '.core_version' tmp/arctic/arctic-info.json | awk '{print $1}')"
+        echo "::set-output name=snow-testnet::$(jq -r '.core_version' tmp/snow-testnet/snow-testnet-info.json | awk '{print $1}')"
         chmod +x tmp/x86_64/ice-node
         tar -czvf ice-node.tar.gz -C tmp/x86_64/ ice-node
         cd tmp/arctic;tar -czvf ../../runtime-"$(jq -r '.core_version' arctic-info.json | awk '{print $1}')".tar.gz *;cd ../../
+        cd tmp/snow-testnet;tar -czvf ../../runtime-"$(jq -r '.core_version' snow-testnet-info.json | awk '{print $1}')".tar.gz *;cd ../../
         sha256sum *.tar.gz > sha256sum
         rm -rf tmp/
 
     - name: Upload assets to release
       uses: softprops/action-gh-release@v1
       with:
-        name: Arctic ${{ github.event.inputs.release-version }}
+        name: Snow ${{ github.event.inputs.release-version }}
         files: ./release/*
         draft: true
