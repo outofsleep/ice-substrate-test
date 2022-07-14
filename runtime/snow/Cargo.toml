@@ -5,7 +5,7 @@ description = 'ICE Network is an EVM compatible network built with Substrate fra
 edition = '2021'
 homepage = 'https://substrate.dev'
 license = 'Apache-2.0'
-name = 'arctic-runtime'
+name = 'snow-runtime'
 repository = 'https://github.com/web3labs/ice-substrate/'
 version = '0.4.47'
 publish = false
@@ -91,8 +91,6 @@ fp-self-contained = { default-features = false, git = "https://github.com/web3la
 pallet-simple-inflation = { path = '../../pallets/simple-inflation', default-features = false, version = '0.0.2' }
 pallet-fees-split = { path = "../../pallets/fees-split", default-features = false, version = '0.0.1' }
 pallet-airdrop = { path = "../../pallets/airdrop", default-features = false }
-
-# ice-runtime-fees-split = { default-features = false, path = "../fees-split", optional=true}
 
 # try-runtime
 frame-try-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }

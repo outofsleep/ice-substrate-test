@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::large_enum_variant)]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -9,24 +8,20 @@ pub mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-/// All the types, traits defination and alises are inside this
+/// All the types, traits definition and aliases are inside this
 pub mod types;
 
 /// All independent utilities function are inside here
 pub mod utils;
 
-// Weight Information related to this palet
+// Weight Information related to this pallet
 pub mod weights;
 
 pub mod merkle;
 
 mod exchange_accounts;
 
-#[cfg(not(feature = "no-vesting"))]
-pub mod vested_transfer;
-
-#[cfg(feature = "no-vesting")]
-pub mod non_vested_transfer;
+pub mod transfer;
 
 #[cfg(not(test))]
 pub(crate) use log::{error, info};
@@ -37,7 +32,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::{error, info};
-	use super::{types, utils, weights, exchange_accounts};
+	use super::{exchange_accounts, transfer, types, utils, weights};
 	use hex_literal::hex;
 	use sp_runtime::traits::Convert;
 
@@ -58,7 +53,7 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_vesting::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
+		/// Because this pallet emits events, it depends on the runtime definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type Currency: Currency<types::AccountIdOf<Self>>
@@ -76,7 +71,7 @@ pub mod pallet {
 			+ Convert<types::VestingBalanceOf<Self>, types::BalanceOf<Self>>
 			+ Convert<types::BalanceOf<Self>, types::VestingBalanceOf<Self>>;
 
-		type MerkelProofValidator: types::MerkelProofValidator<Self>;
+		type MerkelProofValidator: MerkelProofValidator<Self>;
 
 		type MaxProofSize: Get<u32>;
 
@@ -96,7 +91,7 @@ pub mod pallet {
 		/// PartialClaimRequest have been ok for given icon address
 		ClaimPartialSuccess(types::IconAddress),
 
-		/// Value of ServerAccount sotrage have been changed
+		/// Value of ServerAccount storage have been changed
 		// Return old value and new one
 		ServerAccountChanged {
 			old_account: Option<types::AccountIdOf<T>>,
@@ -115,7 +110,7 @@ pub mod pallet {
 			new_root: [u8; 32],
 		},
 
-		/// Creditor balance is runnning low
+		/// Creditor balance is running low
 		CreditorBalanceLow,
 	}
 
@@ -151,6 +146,16 @@ pub mod pallet {
 	pub(super) type CreditorAccount<T: Config> =
 		StorageValue<_, types::AccountIdOf<T>, OptionQuery>;
 
+	#[pallet::type_value]
+	pub(super) fn DefaultStorageVersion<T: Config>() -> u32 {
+		1_u32.into()
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_storage_version)]
+	pub(super) type StorageVersion<T: Config> =
+		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultStorageVersion<T>>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// This error will occur when signature validation failed.
@@ -165,7 +170,7 @@ pub mod pallet {
 		/// Claim has already been made so can't be made again at this time
 		ClaimAlreadyMade,
 
-		/// Coversion between partially-compatible type failed
+		/// Conversion between partially-compatible type failed
 		FailedConversion,
 
 		/// Creditor account do not have enough USABLE balance to
@@ -184,7 +189,7 @@ pub mod pallet {
 		/// Given proof set was invalid to expected tree root
 		InvalidMerkleProof,
 
-		/// Provided proof size excced the maximum limit
+		/// Provided proof size exceed the maximum limit
 		ProofTooLarge,
 
 		/// This icon address have already been mapped to another ice address
@@ -194,7 +199,7 @@ pub mod pallet {
 		IceAddressInUse,
 
 		// Airdrop pallet expect AccountId32 as AccountId
-		// and all signature verification as well as Markle proff
+		// and all signature verification as well as Marble proof
 		// have been constructed with this assumption
 		/// Unexpected format of AccountId
 		IncompatibleAccountId,
@@ -211,7 +216,7 @@ pub mod pallet {
 		/// Invalid signature provided
 		InvalidIceSignature,
 
-		/// Couldnot get embedded ice address from message
+		/// Couldn't get embedded ice address from message
 		FailedExtractingIceAddress,
 
 		/// Given message payload is invalid or is in unexpected format
@@ -247,13 +252,13 @@ pub mod pallet {
 			// Make sure only root or server account call call this
 			Self::ensure_root_or_server(origin).map_err(|_| Error::<T>::DeniedOperation)?;
 
-			// Make sure node is accepting new claimrequest
+			// Make sure node is accepting new claim-request
 			Self::ensure_user_claim_switch()?;
 
 			// Verify the integrity of message
 			Self::validate_message_payload(&message, &ice_address).map_err(|e| {
 				info!(
-					"claim request by: {icon_address:?}. Rejected at: validate_message_paload(). Error: {e:?}"
+					"claim request by: {icon_address:?}. Rejected at: validate_message_payload(). Error: {e:?}"
 				);
 				e
 			})?;
@@ -262,7 +267,7 @@ pub mod pallet {
 			Self::validate_merkle_proof(&icon_address, total_amount, defi_user, proofs).map_err(
 				|e| {
 					info!(
-						"claim request by: {icon_address:?}. Rejected at: validate_merkle_proff()"
+						"claim request by: {icon_address:?}. Rejected at: validate_merkle_proof()"
 					);
 					e
 				},
@@ -295,19 +300,19 @@ pub mod pallet {
 
 			// Make sure this user is eligible for claim.
 			Self::ensure_claimable(&snapshot).map_err(|e| {
-				info!("claim requet by: {icon_address:?}. Rejected at: ensure_claimable(). Snapshot: {snapshot:?}.");
+				info!("claim request by: {icon_address:?}. Rejected at: ensure_claimable(). Snapshot: {snapshot:?}.");
 				e
 			})?;
 
 			// We also make sure creditor have enough fund to complete this airdrop
 			Self::validate_creditor_fund(total_amount).map_err(|e| {
-				error!("claim requet by: {icon_address:?}. Rejected at: validate_creditor_fund(). Amount: {total_amount:?}");
+				error!("claim request by: {icon_address:?}. Rejected at: validate_creditor_fund(). Amount: {total_amount:?}");
 				e
 			})?;
 
 			// Do the actual transfer if eligible
 			Self::do_transfer(&mut snapshot, &icon_address).map_err(|e| {
-				info!("claim request by: {icon_address:?}. Failed at: do_transfer(). Reason: {e:?}. Snapshot: {snapshot:?}");
+				error!("claim request by: {icon_address:?}. Failed at: do_transfer(). Reason: {e:?}. Snapshot: {snapshot:?}");
 				e
 			})?;
 
@@ -350,7 +355,9 @@ pub mod pallet {
 			let mut snapshot =
 				Self::insert_or_get_snapshot(&icon_address, &ice_address, defi_user, total_amount)
 					.map_err(|e| {
-						error!("Exhange for: {icon_address:?}. Failed at: insert_or_get_snapshot.");
+						error!(
+							"Exchange for: {icon_address:?}. Failed at: insert_or_get_snapshot."
+						);
 						e
 					})?;
 
@@ -359,7 +366,7 @@ pub mod pallet {
 				e
 			})?;
 			Self::do_transfer(&mut snapshot, &icon_address).map_err(|e| {
-				info!("Exchange for: {icon_address:?}. Failed at: do_transfer. Snapshot: {snapshot:?}. Reason: {e:?}");
+				error!("Exchange for: {icon_address:?}. Failed at: do_transfer. Snapshot: {snapshot:?}. Reason: {e:?}");
 				e
 			})?;
 
@@ -486,7 +493,7 @@ pub mod pallet {
 			amount: types::BalanceOf<T>,
 		) -> Result<types::SnapshotInfo<T>, DispatchError> {
 			let ice_account =
-				Self::to_account_id(ice_address.to_vec().try_into().map_err(|_| {
+				Self::convert_to_account_id(ice_address.to_vec().try_into().map_err(|_| {
 					error!(
 						"received ice_address: {ice_address:?} cannot be converted into [u8; 32]"
 					);
@@ -533,11 +540,7 @@ pub mod pallet {
 		}
 
 		pub fn ensure_claimable(snapshot: &types::SnapshotInfo<T>) -> DispatchResult {
-			#[cfg(not(feature = "no-vesting"))]
 			let already_claimed = snapshot.done_instant && snapshot.done_vesting;
-
-			#[cfg(feature = "no-vesting")]
-			let already_claimed = snapshot.done_instant;
 
 			if already_claimed {
 				Err(Error::<T>::ClaimAlreadyMade.into())
@@ -549,9 +552,9 @@ pub mod pallet {
 		pub fn validate_creditor_fund(required_amount: types::BalanceOf<T>) -> DispatchResult {
 			let creditor_balance =
 				<T as Config>::Currency::free_balance(&Self::get_creditor_account()?);
-			let exestensial_deposit = <T as Config>::Currency::minimum_balance();
+			let existential_deposit = <T as Config>::Currency::minimum_balance();
 
-			if creditor_balance > required_amount + exestensial_deposit {
+			if creditor_balance > required_amount + existential_deposit {
 				Ok(())
 			} else {
 				Self::deposit_event(Event::<T>::CreditorBalanceLow);
@@ -643,7 +646,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn to_account_id(ice_bytes: [u8; 32]) -> Result<types::AccountIdOf<T>, Error<T>> {
+		pub fn convert_to_account_id(
+			ice_bytes: [u8; 32],
+		) -> Result<types::AccountIdOf<T>, Error<T>> {
 			<T as frame_system::Config>::AccountId::decode(&mut &ice_bytes[..])
 				.map_err(|_e| Error::<T>::InvalidIceAddress)
 		}
@@ -652,15 +657,7 @@ pub mod pallet {
 			snapshot: &mut types::SnapshotInfo<T>,
 			icon_address: &types::IconAddress,
 		) -> Result<(), DispatchError> {
-			use types::DoTransfer;
-
-			#[cfg(not(feature = "no-vesting"))]
-			type TransferType = super::vested_transfer::DoVestdTransfer;
-
-			#[cfg(feature = "no-vesting")]
-			type TransferType = super::non_vested_transfer::AllInstantTransfer;
-
-			let transfer_result = TransferType::do_transfer(snapshot);
+			let transfer_result = transfer::do_transfer(snapshot);
 
 			// No matter the result we will write the updated_snapshot
 			<IconSnapshotMap<T>>::insert(icon_address, snapshot);

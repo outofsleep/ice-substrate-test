@@ -62,47 +62,75 @@ fn ensure_root_or_server() {
 }
 
 #[test]
-fn get_vesting_amounts_splitted() {
+fn get_vesting_amounts_split() {
+	use sp_runtime::ArithmeticError;
+	let expected_defi_instant_per = 40;
+	let expected_non_defi_instant_per = 30;
 	minimal_test_ext().execute_with(|| {
-		use sp_runtime::ArithmeticError;
-		let get_splitted_amounts: _ = utils::get_splitted_amounts::<Test>;
+		let get_split_amounts: _ = utils::get_split_amounts::<Test>;
 		let defi_instant = utils::get_instant_percentage::<Test>(true);
 		let non_defi_instant = utils::get_instant_percentage::<Test>(false);
 
+		assert_eq!(
+			(expected_defi_instant_per, expected_non_defi_instant_per),
+			(defi_instant, non_defi_instant),
+		);
 		assert_err!(
-			get_splitted_amounts(types::ServerBalance::max_value(), defi_instant),
+			get_split_amounts(types::ServerBalance::max_value(), defi_instant),
 			ArithmeticError::Overflow
 		);
-		assert_eq!(
-			Ok((0_u32.into(), 0_u32.into())),
-			get_splitted_amounts(0_u32.into(), defi_instant)
-		);
+		assert_eq!(Ok((10_u32.into(), 0u32.into())), get_split_amounts(10, 100));
+		assert_eq!(Ok((0u32.into(), 10u32.into())), get_split_amounts(10, 0));
+		assert_eq!(Ok((0u32.into(), 0u32.into())), get_split_amounts(0, 50));
+		assert_eq!(Ok((0u32.into(), 0u32.into())), get_split_amounts(0, 0));
 
 		assert_eq!(
 			Ok((900_u32.into(), 2100_u32.into())),
-			get_splitted_amounts(3_000_u32.into(), non_defi_instant)
+			get_split_amounts(3_000_u32.into(), non_defi_instant)
 		);
+
 		assert_eq!(
 			Ok((1200_u32.into(), 1800_u32.into())),
-			get_splitted_amounts(3_000_u32.into(), defi_instant)
+			get_split_amounts(3_000_u32.into(), defi_instant)
 		);
-
-		assert_eq!(
-			Ok((0_u32.into(), 1_u32.into())),
-			get_splitted_amounts(1_u32.into(), non_defi_instant)
-		);
-		assert_eq!(
-			Ok((0_u32.into(), 1_u32.into())),
-			get_splitted_amounts(1_u32.into(), defi_instant)
-		);
-
 		assert_eq!(
 			Ok((2932538_u32.into(), 6842591_u32.into())),
-			get_splitted_amounts(9775129_u32.into(), non_defi_instant)
+			get_split_amounts(9775129_u32.into(), non_defi_instant)
 		);
 		assert_eq!(
 			Ok((3910051_u32.into(), 5865078_u32.into())),
-			get_splitted_amounts(9775129_u32.into(), defi_instant)
+			get_split_amounts(9775129_u32.into(), defi_instant)
+		);
+	});
+}
+
+#[test]
+fn get_vesting_amounts_split_no_vesting() {
+	use sp_runtime::ArithmeticError;
+
+	minimal_test_ext().execute_with(|| {
+		let get_split_amounts: _ = utils::get_split_amounts::<Test>;
+		let defi_instant = 100;
+		let non_defi_instant = 100;
+		assert_eq!(Ok((10_u32.into(), 0u32.into())), get_split_amounts(10, 100));
+		assert_eq!(Ok((0u32.into(), 10u32.into())), get_split_amounts(10, 0));
+		assert_eq!(Ok((0u32.into(), 0u32.into())), get_split_amounts(0, 50));
+		assert_eq!(Ok((0u32.into(), 0u32.into())), get_split_amounts(0, 0));
+		assert_eq!(
+			Ok((3000u32.into(), 0u32.into())),
+			get_split_amounts(3000, non_defi_instant)
+		);
+		assert_eq!(
+			Ok((3000u32.into(), 0u32.into())),
+			get_split_amounts(3000, defi_instant)
+		);
+		assert_eq!(
+			Ok((9775129_u32.into(), 0u32.into())),
+			get_split_amounts(9775129, non_defi_instant)
+		);
+		assert_eq!(
+			Ok((9775129_u32.into(), 0u32.into())),
+			get_split_amounts(9775129, defi_instant)
 		);
 	});
 }
@@ -113,17 +141,26 @@ fn cook_vesting_schedule() {
 	minimal_test_ext().execute_with(|| {
 		{
 			let (schedule, remainder) =
-				utils::new_vesting_with_deadline::<Test, 0u32>(10u32.into(), 10u32.into());
+				utils::new_vesting_with_deadline::<Test, 0u32>(1000u32.into(), 1000u32.into());
 
 			let schedule = schedule.unwrap();
 			assert_eq!(remainder, 0u32.into());
 
-			assert_eq!(schedule.locked(), 10u32.into());
+			assert_eq!(schedule.locked(), 1000u32.into());
 			assert_eq!(schedule.per_block(), 1u32.into());
 			assert_eq!(
 				schedule.ending_block_as_balance::<BlockToBalance>(),
-				10u32.into()
+				1000u32.into()
 			);
+		}
+
+		{
+			let min_vesting_amount = <Test as pallet_vesting::Config>::MinVestedTransfer::get();
+			let amount = min_vesting_amount - 1;
+			let (schedule, remainder) = utils::new_vesting_with_deadline::<Test, 0u32>(amount, 1);
+
+			assert_eq!(schedule, None);
+			assert_eq!(remainder, amount);
 		}
 
 		{
@@ -135,14 +172,14 @@ fn cook_vesting_schedule() {
 		}
 
 		{
-			let (schedule, remainer) =
-				utils::new_vesting_with_deadline::<Test, 5u32>(12u32.into(), 10u32.into());
+			let (schedule, remained) =
+				utils::new_vesting_with_deadline::<Test, 5u32>(1002u32.into(), 10u32.into());
 
 			let primary = schedule.unwrap();
-			assert_eq!(remainer, 2u32.into());
+			assert_eq!(remained, 2u32.into());
 
-			assert_eq!(primary.locked(), 10u32.into());
-			assert_eq!(primary.per_block(), 2u32.into());
+			assert_eq!(primary.locked(), 1000u32.into());
+			assert_eq!(primary.per_block(), 200u32.into());
 			assert_eq!(
 				primary.ending_block_as_balance::<BlockToBalance>(),
 				10u32.into()
@@ -150,14 +187,14 @@ fn cook_vesting_schedule() {
 		}
 
 		{
-			let (schedule, remainer) =
-				utils::new_vesting_with_deadline::<Test, 0u32>(16u32.into(), 10u32.into());
+			let (schedule, remained) =
+				utils::new_vesting_with_deadline::<Test, 0u32>(1006_u32.into(), 10u32.into());
 
 			let schedule = schedule.unwrap();
-			assert_eq!(remainer, 6u32.into());
+			assert_eq!(remained, 6u32.into());
 
-			assert_eq!(schedule.locked(), 10u32.into());
-			assert_eq!(schedule.per_block(), 1u32.into());
+			assert_eq!(schedule.locked(), 1000_u32.into());
+			assert_eq!(schedule.per_block(), 100_u32.into());
 			assert_eq!(
 				schedule.ending_block_as_balance::<BlockToBalance>(),
 				10u32.into()
@@ -165,11 +202,11 @@ fn cook_vesting_schedule() {
 		}
 
 		{
-			let (schedule, remainer) =
+			let (schedule, remained) =
 				utils::new_vesting_with_deadline::<Test, 0u32>(3336553u32.into(), 10_000u32.into());
 
 			let schedule = schedule.unwrap();
-			assert_eq!(remainer, 6553u32.into());
+			assert_eq!(remained, 6553u32.into());
 
 			assert_eq!(schedule.locked(), 3330000u32.into());
 			assert_eq!(schedule.per_block(), 333u32.into());
@@ -182,7 +219,6 @@ fn cook_vesting_schedule() {
 }
 
 #[test]
-#[cfg(not(feature = "no-vesting"))]
 fn making_vesting_transfer() {
 	let get_per: _ = utils::get_instant_percentage::<Test>;
 
@@ -211,12 +247,13 @@ fn making_vesting_transfer() {
 			// Ensure all amount is being transferred
 			assert_eq!(9775129_u128, Currency::free_balance(&claimer));
 
-			// Make sure user is getting atleast of instant amount
+			// Make sure user is getting at least of instant amount
 			// might get more due to vesting remainder
 			assert!(Currency::usable_balance(&claimer) >= 2932538_u32.into());
 
 			// Make sure flags are updated
-			assert!(snapshot.done_instant && snapshot.done_vesting);
+			assert!(snapshot.done_instant);
+			assert!(snapshot.done_vesting);
 		}
 
 		// When instant transfer is true but not vesting
@@ -233,11 +270,11 @@ fn making_vesting_transfer() {
 
 			assert_ok!(AirdropModule::do_transfer(&mut snapshot, &icon_address));
 
-			// Ensure amount only accounting to vesting is transfererd
+			// Ensure amount only accounting to vesting is transferred
 
 			let expected_transfer = {
 				let vesting_amount: types::VestingBalanceOf<Test> =
-					utils::get_splitted_amounts::<Test>(amount, get_per(defi_user))
+					utils::get_split_amounts::<Test>(amount, get_per(defi_user))
 						.unwrap()
 						.1;
 				let schedule = utils::new_vesting_with_deadline::<Test, 1u32>(
@@ -273,7 +310,7 @@ fn making_vesting_transfer() {
 			// Ensure amount only accounting to instant is transferred
 			let expected_transfer = {
 				let (instant_amount, vesting_amount) =
-					utils::get_splitted_amounts::<Test>(amount, get_per(defi_user)).unwrap();
+					utils::get_split_amounts::<Test>(amount, get_per(defi_user)).unwrap();
 				let remainder = utils::new_vesting_with_deadline::<Test, 1u32>(
 					vesting_amount,
 					5256000u32.into(),
@@ -305,7 +342,7 @@ fn making_vesting_transfer() {
 
 			assert_ok!(AirdropModule::do_transfer(&mut snapshot, &icon_address));
 
-			// Ensure amount only accounting to instant is transfererd
+			// Ensure amount only accounting to instant is transferred
 			assert_eq!(0_u128, Currency::free_balance(&claimer));
 
 			// Ensure flag is updates
@@ -325,7 +362,7 @@ fn test_extract_address() {
 
 #[test]
 fn respect_airdrop_state() {
-	// First verify thet initially everything is allowed
+	// First verify that initially everything is allowed
 	assert_eq!(
 		types::AirdropState::default(),
 		types::AirdropState {
@@ -411,9 +448,10 @@ fn validate_creditor_fund() {
 	use frame_support::traits::Currency;
 
 	minimal_test_ext().execute_with(|| {
-		let exestinsial_balance = <Test as pallet_airdrop::Config>::Currency::minimum_balance();
-		let donator = samples::ACCOUNT_ID[1];
-		<Test as pallet_airdrop::Config>::Currency::deposit_creating(&donator, u64::MAX.into());
+		let existential_balance = <Test as pallet_airdrop::Config>::Currency::minimum_balance();
+		let donor = samples::ACCOUNT_ID[1];
+		let _put_fund =
+			<Test as pallet_airdrop::Config>::Currency::deposit_creating(&donor, u64::MAX.into());
 
 		// When creditor balance is empty.
 		{
@@ -423,18 +461,18 @@ fn validate_creditor_fund() {
 			);
 		}
 
-		// When creditor balance is exactly same as exestinsial balance
+		// When creditor balance is exactly same as existential balance
 		{
-			tranfer_to_creditor(&donator, exestinsial_balance);
+			transfer_to_creditor(&donor, existential_balance);
 			assert_err!(
-				AirdropModule::validate_creditor_fund(exestinsial_balance.try_into().unwrap()),
+				AirdropModule::validate_creditor_fund(existential_balance.try_into().unwrap()),
 				PalletError::InsufficientCreditorBalance,
 			);
 		}
 
 		// When all of creditor balance is required
 		{
-			tranfer_to_creditor(&donator, u32::MAX.into());
+			transfer_to_creditor(&donor, u32::MAX.into());
 			let required_balance = <Test as pallet_airdrop::Config>::Currency::free_balance(
 				&force_get_creditor_account::<Test>(),
 			);
@@ -454,57 +492,36 @@ fn validate_creditor_fund() {
 
 #[test]
 fn ensure_claimable_snapshot() {
+	type SnapshotInfo = types::SnapshotInfo<Test>;
 	minimal_test_ext().execute_with(|| {
-		// Fail when both are claimed
-		{
-			let snapshot = types::SnapshotInfo::<Test> {
-				done_instant: true,
-				done_vesting: true,
-				..Default::default()
-			};
-			assert_err!(
-				AirdropModule::ensure_claimable(&snapshot),
-				PalletError::ClaimAlreadyMade
-			);
-		}
+		let both_true = SnapshotInfo {
+			done_instant: true,
+			done_vesting: true,
+			..Default::default()
+		};
+		let both_false = SnapshotInfo {
+			done_vesting: false,
+			done_instant: false,
+			..Default::default()
+		};
+		let instant_true_vesting_false = SnapshotInfo {
+			done_instant: true,
+			done_vesting: false,
+			..Default::default()
+		};
+		let instant_false_vesting_true = SnapshotInfo {
+			done_instant: false,
+			done_vesting: true,
+			..Default::default()
+		};
 
-		// Pass when both are not done
-		{
-			let snapshot = types::SnapshotInfo::<Test> {
-				done_instant: false,
-				done_vesting: false,
-				..Default::default()
-			};
-			assert_ok!(AirdropModule::ensure_claimable(&snapshot));
-		}
-
-		// Pass when vesting is not claimed
-		{
-			let snapshot = types::SnapshotInfo::<Test> {
-				done_instant: false,
-				done_vesting: true,
-				..Default::default()
-			};
-			assert_ok!(AirdropModule::ensure_claimable(&snapshot));
-		}
-
-		// Pass when instant is not claimed
-		{
-			let snapshot = types::SnapshotInfo::<Test> {
-				done_instant: true,
-				done_vesting: false,
-				..Default::default()
-			};
-
-			#[cfg(not(feature = "no-vesting"))]
-			assert_ok!(AirdropModule::ensure_claimable(&snapshot));
-
-			#[cfg(feature = "no-vesting")]
-			assert_err!(
-				AirdropModule::ensure_claimable(&snapshot),
-				PalletError::ClaimAlreadyMade
-			);
-		}
+		assert_ok!(AirdropModule::ensure_claimable(&both_false));
+		assert_ok!(AirdropModule::ensure_claimable(&instant_true_vesting_false));
+		assert_ok!(AirdropModule::ensure_claimable(&instant_false_vesting_true));
+		assert_err!(
+			AirdropModule::ensure_claimable(&both_true),
+			PalletError::ClaimAlreadyMade,
+		);
 	});
 }
 
@@ -607,5 +624,13 @@ fn insert_or_get_snapshot() {
 			AirdropModule::get_ice_to_icon_map(&ice_address),
 			Some(icon_address)
 		);
+	});
+}
+
+#[test]
+fn storage_version() {
+	minimal_test_ext().execute_with(|| {
+		let version = AirdropModule::get_storage_version();
+		assert_eq!(1_u32, version);
 	});
 }

@@ -7,10 +7,9 @@ mod utility_functions;
 pub mod prelude {
 	pub use super::{
 		force_get_creditor_account, get_last_event, minimal_test_ext, mock, run_to_block, samples,
-		set_creditor_balance, tranfer_to_creditor,
+		set_creditor_balance, transfer_to_creditor,
 	};
 	pub use crate as pallet_airdrop;
-	pub use crate::tests;
 	pub use codec::Encode;
 	pub use frame_support::{
 		assert_err, assert_err_ignore_postinfo, assert_err_with_weight, assert_noop, assert_ok,
@@ -18,7 +17,7 @@ pub mod prelude {
 	};
 	pub use hex_literal::hex as decode_hex;
 	pub use mock::{AirdropModule, Origin, Test};
-	pub use pallet_airdrop::{types, utils};
+	pub use pallet_airdrop::{tests, transfer, types, utils};
 	pub use sp_core::bytes;
 	pub use sp_runtime::traits::{Bounded, IdentifyAccount, Saturating};
 
@@ -177,9 +176,9 @@ pub fn to_test_case(
 	(hash_bytes, proofs)
 }
 
-pub fn tranfer_to_creditor(sponser: &types::AccountIdOf<Test>, amount: types::BalanceOf<Test>) {
+pub fn transfer_to_creditor(sponsor: &types::AccountIdOf<Test>, amount: types::BalanceOf<Test>) {
 	assert_ok!(<Test as pallet_airdrop::Config>::Currency::transfer(
-		Origin::signed(sponser.clone()),
+		Origin::signed(sponsor.clone()),
 		force_get_creditor_account::<Test>(),
 		amount,
 	));
