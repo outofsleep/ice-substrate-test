@@ -6,11 +6,7 @@ use crate::primitives::Block;
 
 pub mod arctic;
 pub mod frost;
-
-pub use arctic::*;
-
-pub use frost::*;
-
+pub mod snow;
 /// Node `ChainSpec` extensions.
 ///
 /// Additional parameters for some Substrate core modules,

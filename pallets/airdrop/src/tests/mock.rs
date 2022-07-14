@@ -20,9 +20,9 @@ pub struct TestValidator<T>(PhantomData<T>);
 
 impl types::MerkelProofValidator<Test> for TestValidator<Test> {
 	fn validate(
-		_root_hash: pallet_airdrop::types::MerkleHash,
-		_leaf_hash: pallet_airdrop::types::MerkleHash,
-		_proofs: pallet_airdrop::types::MerkleProofs<Test>,
+		_root_hash: types::MerkleHash,
+		_leaf_hash: types::MerkleHash,
+		_proofs: types::MerkleProofs<Test>,
 	) -> bool {
 		return true;
 	}
@@ -43,14 +43,13 @@ frame_support::construct_runtime!(
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub const SS58Prefix: u16 = 15253;
+	pub const SS58Prefix: u16 = 2208;
 }
 
 impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type DbWeight = ();
 	type Origin = Origin;
 	type Call = Call;
 	type Index = Index;
@@ -62,6 +61,7 @@ impl system::Config for Test {
 	type Header = Header;
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -70,40 +70,42 @@ impl system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: u128 = 500;
 	pub const MaxLocks: u32 = 50;
-	pub const VestingMinTransfer: Balance = 10_000;
+	pub const VestingMinTransfer: Balance = 1000;
 }
 
 impl pallet_airdrop::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type BalanceTypeConversion = sp_runtime::traits::ConvertInto;
 	type AirdropWeightInfo = pallet_airdrop::weights::AirDropWeightInfo<Test>;
+	type BalanceTypeConversion = sp_runtime::traits::ConvertInto;
 	type MerkelProofValidator = TestValidator<Test>;
 	type MaxProofSize = ConstU32<10>;
 
-	const AIRDROP_VARIABLES: types::AirdropBehaviour = types::AirdropBehaviour {
-		defi_instant_percentage: 40,
-		non_defi_instant_percentage: 30,
-		vesting_period: 5_256_000,
+	const AIRDROP_VARIABLES: types::AirdropBehaviour = {
+		types::AirdropBehaviour {
+			defi_instant_percentage: 40,
+			non_defi_instant_percentage: 30,
+			vesting_period: 5_256_000,
+		}
 	};
 }
 
 impl pallet_balances::Config for Test {
-	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type Event = Event;
 	type DustRemoval = ();
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 }
 
 impl pallet_vesting::Config for Test {

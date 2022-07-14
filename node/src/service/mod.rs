@@ -1,8 +1,10 @@
 //! Support for Ice ecosystem parachains.
 
-pub mod arctic;
-pub mod frost;
+pub mod parachain;
+pub mod solo;
 
-pub use arctic::{arctic_service, build_import_queue, new_partial, start_arctic_node};
+pub use parachain::{
+	arctic, build_import_queue, new_partial, snow, start_arctic_node, start_snow_node,
+};
 
-pub use frost::*;
+pub use solo::*;

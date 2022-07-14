@@ -1,7 +1,7 @@
 use crate as airdrop;
 use airdrop::types;
 use codec::alloc::string::String;
-use frame_support::pallet_prelude::*;
+use frame_support::traits::Get;
 use hex::FromHexError;
 use sp_core::H160;
 use sp_runtime::{
@@ -10,9 +10,9 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 
-/// Reuturns an optional vesting schedule which when applied release given amount
+/// Returns an optional vesting schedule which when applied release given amount
 /// which will be complete in given block. If
-/// Also return amount which is remaineder if amount can't be perfectly divided
+/// Also return amount which is remainder if amount can't be perfectly divided
 /// in per block basis
 pub fn new_vesting_with_deadline<T, const VESTING_APPLICABLE_FROM: u32>(
 	amount: types::VestingBalanceOf<T>,
@@ -22,31 +22,37 @@ where
 	T: pallet_vesting::Config,
 {
 	const MIN_AMOUNT_PER_BLOCK: u32 = 1u32;
+	let min_vesting_amount = <T as pallet_vesting::Config>::MinVestedTransfer::get();
 
 	type BlockToBalance<T> = <T as pallet_vesting::Config>::BlockNumberToBalance;
-	let mut vesting = None;
+	let vesting;
 
 	let ends_in_as_balance = BlockToBalance::<T>::convert(ends_in);
 	let transfer_over = ends_in_as_balance.saturating_sub(VESTING_APPLICABLE_FROM.into());
 
 	let idol_transfer_multiple = transfer_over * MIN_AMOUNT_PER_BLOCK.into();
 
-	let remainding_amount = amount % idol_transfer_multiple;
-	let primary_transfer_amount = amount.saturating_sub(remainding_amount);
+	let mut remaining_amount = amount % idol_transfer_multiple;
+	let primary_transfer_amount = amount.saturating_sub(remaining_amount);
 
 	let per_block = primary_transfer_amount
 		.checked_div(&idol_transfer_multiple)
 		.unwrap_or_else(Bounded::min_value);
 
-	if per_block > Bounded::min_value() {
+	let per_block_is_ok = per_block > 0u32.into();
+	let locked_amount_is_ok = primary_transfer_amount >= min_vesting_amount;
+	if per_block_is_ok && locked_amount_is_ok {
 		vesting = Some(types::VestingInfoOf::<T>::new(
 			primary_transfer_amount,
 			per_block,
 			VESTING_APPLICABLE_FROM.into(),
 		));
+	} else {
+		vesting = None;
+		remaining_amount = amount;
 	}
 
-	(vesting, remainding_amount)
+	(vesting, remaining_amount)
 }
 
 pub fn get_instant_percentage<T: airdrop::Config>(is_defi_user: bool) -> u8 {
@@ -57,7 +63,7 @@ pub fn get_instant_percentage<T: airdrop::Config>(is_defi_user: bool) -> u8 {
 	}
 }
 
-pub fn get_splitted_amounts<T: airdrop::Config>(
+pub fn get_split_amounts<T: airdrop::Config>(
 	total_amount: types::BalanceOf<T>,
 	instant_percentage: u8,
 ) -> Result<(types::BalanceOf<T>, types::VestingBalanceOf<T>), DispatchError> {
@@ -110,7 +116,7 @@ pub fn recover_address(
 			.chain(sig_r)
 			.chain(sig_s)
 			.cloned()
-			.collect::<sp_std::vec::Vec<u8>>()
+			.collect::<Vec<u8>>()
 	};
 
 	let (_exit_status, recovered_pub_key) = ECRecoverPublicKey::execute(&formatted_signature, COST)
@@ -163,18 +169,4 @@ pub fn wrap_bytes(payload: &[u8]) -> Vec<u8> {
 
 pub fn get_current_block_number<T: frame_system::Config>() -> types::BlockNumberOf<T> {
 	<frame_system::Pallet<T>>::block_number()
-}
-
-/// Struct that panics with given message
-/// This is intended to use as ValueQuery's OnEmpty holder
-pub struct PanicOnNoCreditor;
-impl<T> Get<T> for PanicOnNoCreditor {
-	fn get() -> T {
-		panic!(
-			"No creditor account configured.\
-		This call was expected to return default value,\
-		which will inturn produce undesired behaviour as\
-		using default AccountId as creditor is not unexpected"
-		);
-	}
 }

@@ -162,8 +162,8 @@ impl_opaque_keys! {
 }
 
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("arctic-testnet"),
-	impl_name: create_runtime_str!("arctic-testnet"),
+	spec_name: create_runtime_str!("snow"),
+	impl_name: create_runtime_str!("snow"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,
@@ -195,7 +195,7 @@ parameter_types! {
 			::with_sensible_defaults(2 * WEIGHT_PER_SECOND, NORMAL_DISPATCH_RATIO);
 	pub RuntimeBlockLength: BlockLength = BlockLength
 			::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub const SS58Prefix: u16 = 2208;
+	pub const SS58Prefix: u16 = 2207;
 }
 
 // Configure FRAME pallets to include in runtime.
@@ -549,7 +549,7 @@ impl pallet_assets::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = currency::DOLLARS/2;
+	pub const MinVestedTransfer: Balance = 10 * currency::DOLLARS;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -1069,8 +1069,8 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 
 const VESTED_AIRDROP_BEHAVIOUR: pallet_airdrop::AirdropBehaviour =
 	pallet_airdrop::AirdropBehaviour {
-		defi_instant_percentage: 100,
-		non_defi_instant_percentage: 100,
+		defi_instant_percentage: 30,
+		non_defi_instant_percentage: 20,
 		vesting_period: 7776000,
 	};
 
