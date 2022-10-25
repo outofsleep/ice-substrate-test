@@ -423,7 +423,7 @@ pub const GAS_PER_SECOND: u64 = 40_000_000;
 pub const WEIGHT_PER_GAS: u64 = WEIGHT_PER_SECOND / GAS_PER_SECOND;
 
 parameter_types! {
-	pub const ChainId: u64 = 42;
+	pub const ChainId: u64 = 553;
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * 2 * WEIGHT_PER_SECOND / WEIGHT_PER_GAS);
 	pub PrecompilesValue: FrontierPrecompiles<Runtime> = FrontierPrecompiles::<_>::new();
 }
@@ -527,7 +527,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 10 * currency::DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_percent(1);
+	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 
 	pub const MaxApprovals: u32 = 100;
@@ -572,12 +572,11 @@ impl pallet_simple_inflation::Config for Runtime {
 
 impl pallet_fees_split::Config for Runtime {}
 
-const VESTED_AIRDROP_BEHAVIOUR: pallet_airdrop::AirdropBehaviour =
-	pallet_airdrop::AirdropBehaviour {
-		defi_instant_percentage: 30,
-		non_defi_instant_percentage: 20,
-		vesting_period: 7776000,
-	};
+const AIRDROP_VESTING_TERMS: pallet_airdrop::VestingTerms = pallet_airdrop::VestingTerms {
+	defi_instant_percentage: 30,
+	non_defi_instant_percentage: 20,
+	vesting_period: 7776000,
+};
 impl pallet_airdrop::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
@@ -585,7 +584,7 @@ impl pallet_airdrop::Config for Runtime {
 	type BalanceTypeConversion = ConvertInto;
 	type MerkelProofValidator = pallet_airdrop::merkle::AirdropMerkleValidator<Runtime>;
 	type MaxProofSize = ConstU32<21>;
-	const AIRDROP_VARIABLES: pallet_airdrop::AirdropBehaviour = VESTED_AIRDROP_BEHAVIOUR;
+	const VESTING_TERMS: pallet_airdrop::VestingTerms = AIRDROP_VESTING_TERMS;
 }
 
 impl pallet_utility::Config for Runtime {

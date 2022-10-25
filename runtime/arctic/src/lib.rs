@@ -20,12 +20,17 @@ pub fn wasm_binary_unwrap() -> &'static [u8] {
 }
 
 pub mod xcm_config;
+use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use pallet_evm::FeeCalculator;
+use scale_info::TypeInfo;
 
 use frame_support::{
 	pallet_prelude::ConstU32,
-	traits::{EnsureOneOf, EqualPrivilegeOnly, InstanceFilter, LockIdentifier},
+	traits::{
+		ConstU64, EnsureOneOf, EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything,
+		InstanceFilter, LockIdentifier,
+	},
 	RuntimeDebug,
 };
 use frame_system::{
@@ -39,8 +44,8 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160, H256, U256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf, Dispatchable,
-		IdentifyAccount, PostDispatchInfoOf, Verify,
+		AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, ConvertInto, DispatchInfoOf,
+		Dispatchable, IdentifyAccount, PostDispatchInfoOf, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedPointNumber, MultiSignature, Perquintill,
@@ -50,6 +55,9 @@ use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
 use frame_support::inherent::Vec;
 use sp_std::boxed::Box;
@@ -65,7 +73,18 @@ pub type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalanc
 use xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 // XCM Imports
+use orml_traits::location::AbsoluteReserveProvider;
+use orml_traits::parameter_type_with_key;
+use xcm::latest::prelude::AssetId::Concrete;
 use xcm::latest::prelude::BodyId;
+use xcm::latest::prelude::GeneralKey;
+use xcm::latest::prelude::Junction;
+use xcm::latest::prelude::MultiAsset;
+use xcm::latest::prelude::MultiLocation;
+use xcm::latest::prelude::NetworkId;
+use xcm::latest::prelude::Parachain;
+use xcm::latest::prelude::{X1, X2};
+use xcm_builder::{FixedWeightBounds, LocationInverter};
 use xcm_executor::XcmExecutor;
 
 // A few exports that help ease life for downstream crates.
@@ -165,7 +184,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("arctic-testnet"),
 	impl_name: create_runtime_str!("arctic-testnet"),
 	authoring_version: 1,
-	spec_version: 1,
+	spec_version: 2,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -604,7 +623,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 10 * currency::DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_percent(1);
+	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 
 	pub const MaxApprovals: u32 = 100;
@@ -1067,12 +1086,11 @@ impl pallet_base_fee::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
-const VESTED_AIRDROP_BEHAVIOUR: pallet_airdrop::AirdropBehaviour =
-	pallet_airdrop::AirdropBehaviour {
-		defi_instant_percentage: 100,
-		non_defi_instant_percentage: 100,
-		vesting_period: 7776000,
-	};
+const AIRDROP_VESTING_TERMS: pallet_airdrop::VestingTerms = pallet_airdrop::VestingTerms {
+	defi_instant_percentage: 100,
+	non_defi_instant_percentage: 100,
+	vesting_period: 7776000,
+};
 
 impl pallet_airdrop::Config for Runtime {
 	type Event = Event;
@@ -1081,7 +1099,244 @@ impl pallet_airdrop::Config for Runtime {
 	type BalanceTypeConversion = ConvertInto;
 	type MerkelProofValidator = pallet_airdrop::merkle::AirdropMerkleValidator<Runtime>;
 	type MaxProofSize = ConstU32<21>;
-	const AIRDROP_VARIABLES: pallet_airdrop::AirdropBehaviour = VESTED_AIRDROP_BEHAVIOUR;
+	const VESTING_TERMS: pallet_airdrop::VestingTerms = AIRDROP_VESTING_TERMS;
+}
+
+// xtokens impl
+parameter_type_with_key! {
+	/*
+	pub ParachainMinFee: |location: MultiLocation| -> Option<u128> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match (location.parents, location.first_interior()) {
+			// TODO abhi: use PARA_ID here instead of 2001, also change the fees returned
+			(1, Some(Parachain(2001))) => Some(40),
+			_ => None,
+		}
+	};
+	*/
+
+	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+		Some(u128::MAX)
+	};
+}
+
+#[derive(
+	Encode,
+	Decode,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub enum CurrencyId {
+	Token(TokenSymbol),
+	ForeignAsset(ForeignAssetId),
+}
+
+pub fn native_currency_location(para_id: u32, id: CurrencyId) -> MultiLocation {
+	MultiLocation::new(1, X2(Parachain(para_id), GeneralKey(id.encode())))
+}
+
+pub struct RelativeCurrencyIdConvert;
+impl Convert<CurrencyId, Option<MultiLocation>> for RelativeCurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+		use CurrencyId::{ForeignAsset, Token};
+		use TokenSymbol::*;
+		match id {
+			Token(KSM) => Some(MultiLocation::parent()),
+			Token(ICZ) => Some(native_currency_location(
+				ParachainInfo::parachain_id().into(),
+				id,
+			)),
+			ForeignAsset(foreign_asset_id) => {
+				let foreign_asset_id = foreign_asset_id as u32;
+				if let Ok(location) = AssetRegistry::multilocation(&foreign_asset_id) {
+					location
+				} else {
+					None
+				}
+			}
+		}
+	}
+}
+
+impl Convert<MultiLocation, Option<CurrencyId>> for RelativeCurrencyIdConvert {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		use CurrencyId::{ForeignAsset, Token};
+		use TokenSymbol::*;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(KSM));
+		}
+
+		if let Some(foreign_asset_id) = AssetRegistry::location_to_asset_id(location.clone()) {
+			return Some(ForeignAsset(foreign_asset_id.try_into().unwrap()));
+		}
+
+		match location {
+			MultiLocation {
+				parents: 1,
+				interior: X2(Parachain(para_id), GeneralKey(key)),
+			} => match (para_id, &key[..]) {
+				(id, key) if id == u32::from(ParachainInfo::parachain_id()) => {
+					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+					match currency_id {
+						Token(ICZ) => Some(currency_id),
+						_ => None,
+					}
+				}
+				_ => None,
+			},
+			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => {
+				let key = &key[..];
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(ICZ) => Some(currency_id),
+					_ => None,
+				}
+			}
+			_ => None,
+		}
+	}
+}
+
+impl Convert<MultiAsset, Option<CurrencyId>> for RelativeCurrencyIdConvert {
+	fn convert(a: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset {
+			id: Concrete(id), ..
+		} = a
+		{
+			Self::convert(id)
+		} else {
+			None
+		}
+	}
+}
+
+pub struct AccountIdToMultiLocation;
+impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> MultiLocation {
+		X1(Junction::AccountId32 {
+			network: NetworkId::Any,
+			id: account.into(),
+		})
+		.into()
+	}
+}
+
+parameter_types! {
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::parachain_id().into())));
+	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+	pub const MaxAssetsForTransfer: usize = 2;
+}
+
+impl orml_xtokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdConvert = RelativeCurrencyIdConvert;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type SelfLocation = SelfLocation;
+	type MultiLocationsFilter = frame_support::traits::Everything; // ParentOrParachains;
+	type MinXcmFee = ParachainMinFee;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type Weigher = FixedWeightBounds<ConstU64<2000_000_000>, Call, ConstU32<100>>;
+	type BaseXcmWeight = ConstU64<100_000_000>;
+	type LocationInverter = LocationInverter<Ancestry>;
+	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type ReserveProvider = AbsoluteReserveProvider; // RelativeReserveProvider;
+}
+
+/// Asset-registry impl
+pub struct AssetAuthority;
+impl EnsureOriginWithArg<Origin, Option<u32>> for AssetAuthority {
+	type Success = ();
+
+	fn try_origin(origin: Origin, _asset_id: &Option<u32>) -> Result<Self::Success, Origin> {
+		EnsureRoot::try_origin(origin)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin(_asset_id: &Option<u32>) -> Origin {
+		unimplemented!()
+	}
+}
+
+#[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
+pub struct CustomMetadata {
+	pub fee_per_second: u128,
+}
+
+impl orml_asset_registry::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type AssetId = u32;
+	type AuthorityOrigin = AssetAuthority;
+	type CustomMetadata = CustomMetadata;
+	type AssetProcessor = orml_asset_registry::SequentialId<Runtime>;
+	type WeightInfo = ();
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		// every currency has a zero existential deposit
+		match currency_id {
+			_ => 0,
+		}
+	};
+}
+
+parameter_types! {
+	pub ORMLMaxLocks: u32 = 2;
+	// pub NativeTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+
+}
+
+type Amount = i128;
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = ConstU32<50>;
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = [u8; 8];
+	type DustRemovalWhitelist = Everything;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
+impl orml_unknown_tokens::Config for Runtime {
+	type Event = Event;
+}
+
+parameter_types! {
+	pub const NativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ICZ);
+	pub const RelayCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+}
+
+pub type AdaptedBasicCurrency =
+	orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+
+impl orml_currencies::Config for Runtime {
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = NativeCurrencyId;
+	type WeightInfo = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -1151,6 +1406,13 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin, Config} = 81,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 82,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 83,
+		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>} = 84,
+		XTokens: orml_xtokens::{Pallet, Call, Storage, Event<T>} = 85,
+
+		// Asset registry
+		AssetRegistry: orml_asset_registry::{Pallet, Call, Storage, Event<T>} = 90,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 91,
+		Currencies: orml_currencies::{Pallet, Call, Storage} = 92,
 	}
 );
 
@@ -1654,3 +1916,100 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 	CheckInherents = CheckInherents,
 }
+
+macro_rules! create_currency_id {
+    ($(#[$meta:meta])*
+	$vis:vis enum TokenSymbol {
+        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
+    }) => {
+		$(#[$meta])*
+		$vis enum TokenSymbol {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
+
+		impl TryFrom<u8> for TokenSymbol {
+			type Error = ();
+
+			fn try_from(v: u8) -> Result<Self, Self::Error> {
+				match v {
+					$($val => Ok(TokenSymbol::$symbol),)*
+					_ => Err(()),
+				}
+			}
+		}
+
+		impl Into<u8> for TokenSymbol {
+			fn into(self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => ($val),)*
+				}
+			}
+		}
+
+		impl TryFrom<Vec<u8>> for CurrencyId {
+			type Error = ();
+			fn try_from(v: Vec<u8>) -> Result<CurrencyId, ()> {
+				match v.as_slice() {
+					$(bstringify!($symbol) => Ok(CurrencyId::Token(TokenSymbol::$symbol)),)*
+					_ => Err(()),
+				}
+			}
+		}
+
+		impl TokenInfo for CurrencyId {
+			fn currency_id(&self) -> Option<u8> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($val),)*
+					_ => None,
+				}
+			}
+			fn name(&self) -> Option<&str> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($name),)*
+					_ => None,
+				}
+			}
+			fn symbol(&self) -> Option<&str> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some(stringify!($symbol)),)*
+					_ => None,
+				}
+			}
+			fn decimals(&self) -> Option<u8> {
+				match self {
+					$(CurrencyId::Token(TokenSymbol::$symbol) => Some($deci),)*
+					_ => None,
+				}
+			}
+		}
+
+		$(pub const $symbol: CurrencyId = CurrencyId::Token(TokenSymbol::$symbol);)*
+
+		impl TokenSymbol {
+			pub fn get_info() -> Vec<(&'static str, u32)> {
+				vec![
+					$((stringify!($symbol), $deci),)*
+				]
+			}
+		}
+    }
+}
+
+create_currency_id! {
+	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[repr(u8)]
+	pub enum TokenSymbol {
+		ICZ("Arctic ICZ", 18) = 0,
+		KSM("Kusama", 12) = 130,
+	}
+}
+
+pub trait TokenInfo {
+	fn currency_id(&self) -> Option<u8>;
+	fn name(&self) -> Option<&str>;
+	fn symbol(&self) -> Option<&str>;
+	fn decimals(&self) -> Option<u8>;
+}
+
+pub type ForeignAssetId = u16;

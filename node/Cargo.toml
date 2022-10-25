@@ -7,7 +7,7 @@ homepage = 'https://substrate.dev'
 license = 'Apache-2.0'
 name = 'ice-node'
 repository = 'https://github.com/web3labs/ice-substrate'
-version = '0.4.49'
+version = '0.4.55'
 publish = false
 
 [package.metadata.docs.rs]
@@ -25,7 +25,7 @@ futures = "0.3"
 log = "0.4.8"
 serde_json = "1.0"
 hex-literal = "0.3.4"
-tracing-core = "0.1.28"
+tracing-core = "=0.1.26"
 
 # primitives
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
@@ -104,7 +104,7 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24" }
 polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.24", optional = true }
-
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.24" }
 
 # These dependencies are used for runtime benchmarking
 frame-benchmarking = { branch = "polkadot-v0.9.24", git = "https://github.com/paritytech/substrate" }
