@@ -123,7 +123,9 @@ jobs:
     - build-binary
     - build-runtime
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        chain: ["arctic", "snow"]
     steps:
     - name: Checkout the source code
       uses: actions/checkout@v3
