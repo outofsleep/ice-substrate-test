@@ -1,4 +1,4 @@
-name: docker push
+name: onfinality
 
 on: 
   workflow_dispatch:
@@ -22,6 +22,7 @@ jobs:
       run: |
          mkdir onfinality
          cp scripts/docker/Dockerfile onfinality/
+         cd onfinality/
          docker build -t snow .
          docker image tag snow icenetworkio/snow:${{ github.event.inputs.tag }}
          docker
