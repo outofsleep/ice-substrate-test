@@ -1,4 +1,4 @@
-iname: onfinality
+name: onfinality
 
 on: 
   workflow_dispatch:
