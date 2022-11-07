@@ -27,4 +27,4 @@ jobs:
         with:
           context: scripts/docker/
           push: true
-          tags: icenetworkio/snow:${{ github.event.inputs.tags }}
+          tags: shivamweb3labs/snow:${{ github.event.inputs.tags }}
