@@ -19,8 +19,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly-2022-01-16
-        target: x86_64-unknown-linux-gnu
-        components: rustfmt, clippy
+        profile: minimal
         default: true
     - name: Install WASM target (for runtime building)
       shell: bash
@@ -28,20 +27,21 @@ jobs:
     - name: Build optimized binary
       run: cargo build --quiet
 
-  clippy:
+  misc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2022-10-27
-          components: clippy
+          profile: minimal
+          override: true
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: misc
       - name: Run clippy
         run: cargo clippy -- -D warnings
-
-  fmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
       - name: Run cargofmt
-        run: cargo +stable fmt --all -- --check
+        run: cargo fmt --all -- --check
+      
