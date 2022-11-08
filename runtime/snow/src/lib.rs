@@ -165,7 +165,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("snow"),
 	impl_name: create_runtime_str!("snow"),
 	authoring_version: 1,
-	spec_version: 1,
+	spec_version: 2,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -476,12 +476,11 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	}
 }
 
-//https://github.com/AstarNetwork/Astar/blob/master/runtime/astar/src/lib.rs#L658
 pub const GAS_PER_SECOND: u64 = 40_000_000;
 pub const WEIGHT_PER_GAS: u64 = WEIGHT_PER_SECOND / GAS_PER_SECOND;
 
 parameter_types! {
-	pub const ChainId: u64 = 551;
+	pub const ChainId: u64 = 552;
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * 2 * WEIGHT_PER_SECOND / WEIGHT_PER_GAS);
 	pub PrecompilesValue: FrontierPrecompiles<Runtime> = FrontierPrecompiles::<_>::new();
 }
@@ -603,7 +602,7 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 10 * currency::DOLLARS;
-	pub const SpendPeriod: BlockNumber = DAYS;
+	pub const SpendPeriod: BlockNumber = 7 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 
@@ -626,7 +625,7 @@ impl pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
-	type SpendFunds = ();
+	type SpendFunds = Bounties;
 	type MaxApprovals = MaxApprovals;
 }
 
@@ -864,10 +863,10 @@ parameter_types! {
 	pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
 	pub const MaximumReasonLength: u32 = 16384;
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
-	pub BountyValueMinimum: Balance = 10 * currency::DOLLARS;
 	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-	pub CuratorDepositMin: Balance = 1 * currency::DOLLARS;
-	pub CuratorDepositMax: Balance = 100 * currency::DOLLARS;
+	pub BountyValueMinimum: Balance = 10 * currency::DOLLARS;
+	pub CuratorDepositMin: Balance = 10 * currency::DOLLARS;
+	pub CuratorDepositMax: Balance = 200 * currency::DOLLARS;
 }
 
 impl pallet_bounties::Config for Runtime {
