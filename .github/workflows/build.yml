@@ -20,7 +20,7 @@ jobs:
       with:
         toolchain: nightly-2022-10-16
         profile: minimal
-        default: true
+        override: true
     - name: Install WASM target (for runtime building)
       shell: bash
       run: rustup target add wasm32-unknown-unknown --toolchain nightly-2022-10-16
