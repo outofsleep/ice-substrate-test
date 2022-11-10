@@ -1,10 +1,6 @@
 name: Release
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release version (e.g. v0.1.0)'
-        required: true
+   workflow_dispatch:
 
 env:
   BUILD_PROFILE: debug
@@ -37,12 +33,14 @@ jobs:
           cat ${{ matrix.chain }}-srtool-digest.json
           echo "Compact Runtime: ${{ steps.srtool_build.outputs.wasm }}"
           echo "Compressed Runtime: ${{ steps.srtool_build.outputs.wasm_compressed }}"
+
       - name: Install subwasm
         shell: bash
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/v${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
+
       - name: Show Runtime information
         shell: bash
         run: |
@@ -50,17 +48,20 @@ jobs:
           subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }}
           subwasm --json info ${{ steps.srtool_build.outputs.wasm }} > ${{ matrix.chain }}-info.json
           subwasm --json info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ matrix.chain }}-compressed-info.json
+
       - name: Extract the metadata
         shell: bash
         run: |
           subwasm meta ${{ steps.srtool_build.outputs.wasm }}
           subwasm --json meta ${{ steps.srtool_build.outputs.wasm }} > ${{ matrix.chain }}-metadata.json
+
       - name: Check the metadata diff
         shell: bash
         run: |
           subwasm get https://${{ matrix.chain }}-rpc.icenetwork.io:9933 --output ${{ matrix.chain }}-live.wasm
           subwasm diff ${{ steps.srtool_build.outputs.wasm }} ${{ matrix.chain }}-live.wasm | \
             tee ${{ matrix.chain }}-diff.txt
+
       - name: Archive Subwasm results
         uses: actions/upload-artifact@v3
         with:
@@ -73,6 +74,7 @@ jobs:
             ${{ matrix.chain }}-compressed-info.json
             ${{ matrix.chain }}-metadata.json
             ${{ matrix.chain }}-diff.txt
+
   build_binary:
     strategy:
       matrix:
@@ -143,6 +145,7 @@ jobs:
                 srtool_details: $srtool_details,
                 subwasm_details: $subwasm_details
               }' | tee template_data.json
+
       - name: Publish github release
         uses: softprops/action-gh-release@v1
         with:

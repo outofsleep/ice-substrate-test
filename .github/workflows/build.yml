@@ -6,42 +6,33 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  BUILD_PROFILE: debug
+  RUST_TOOLCHAIN: nightly-2022-10-25    
+
 jobs:
   build-project:
-    name: Build project
     runs-on: ubuntu-latest
-    steps:
-    - name: Checkout the source code
-      uses: actions/checkout@v2
-      with:
-        submodules: true
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly-2022-10-16
-        profile: minimal
-        override: true
-    - name: Install WASM target (for runtime building)
-      shell: bash
-      run: rustup target add wasm32-unknown-unknown --toolchain nightly-2022-10-16
-    - name: Build optimized binary
-      run: cargo build
-
-  misc:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2022-10-16
-          profile: minimal
-          override: true
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: misc
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
-      - name: Run cargofmt
-        run: cargo fmt --all -- --check
+    steps:   
+      - name: Fetch latest code
+        uses: actions/checkout@v3
       
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          target: wasm32-unknown-unknown
+          override: true
+          
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          default: true
+          profile: minimal
+          target: wasm32-unknown-unknown
+          toolchain: stable
+      
+      - name: Build
+        run: |
+            CARGO_INCREMENTAL=0 RUSTFLAGS="-D warnings" cargo build
