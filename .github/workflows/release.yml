@@ -86,22 +86,12 @@ jobs:
       matrix:
         target:
         - x86_64-unknown-linux-gnu
-        - aarch64-unknown-linux-gnu
     steps:
 
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Install ARM64 multilib
-        if: contains(matrix.target, 'aarch64')
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-multilib g++-multilib
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          mkdir .cargo
-          printf '[target.aarch64-unknown-linux-gnu]\nlinker = "aarch64-linux-gnu-gcc"' > .cargo/config
       
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
@@ -133,7 +123,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ice-binary-${{ matrix.target }}
-          path: target/release/ice-node
+          path: target/x86_64-unknown-linux-gnu/release/ice-node
 
   release:
     name: Build and publish Runtime
@@ -150,12 +140,28 @@ jobs:
         with:
           tag: ${{ github.event.inputs.tag }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          
+       
+      - name: Checkout the source code
+        uses: actions/checkout@v3
+      - name: Create dir
+        shell: bash
+        run: |
+          mkdir -p release/tmp/
+          cd release/tmp/
+      - name: get x86_64 binary
+        uses: actions/download-artifact@v2
+        with:
+          name: ice-binary-${{ matrix.target }}
+          path: release/tmp/
+      - uses: actions/download-artifact@v2
+        with: 
+          name: ${{ matrix.chain }}-runtime
+          path: release/tmp/
       - name: Generate template data
         run: |
             TAG=${{ github.event.inputs.tag }}
-            SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
-            SUBWASM_DETAILS=$(cat arctic-subwam-info.json)
+            SRTOOL_DETAILS=$(cat ${{ matrix.chain }}-srtool-digest.json)
+            SUBWASM_DETAILS=$(cat ${{ matrix.chain }}-subwam-info.json)
             echo 'Template data:'
             jq -n \
               --arg tag "$TAG" \
