@@ -151,17 +151,17 @@ jobs:
       - name: get x86_64 binary
         uses: actions/download-artifact@v2
         with:
-          name: ice-binary-${{ matrix.target }}
+          name: ice-binary-x86_64-unknown-linux-gnu
           path: release/tmp/
       - uses: actions/download-artifact@v2
         with: 
-          name: ${{ matrix.chain }}-runtime
+          name: arctic-runtime
           path: release/tmp/
       - name: Generate template data
         run: |
             TAG=${{ github.event.inputs.tag }}
-            SRTOOL_DETAILS=$(cat ${{ matrix.chain }}-srtool-digest.json)
-            SUBWASM_DETAILS=$(cat ${{ matrix.chain }}-subwam-info.json)
+            SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
+            SUBWASM_DETAILS=$(cat arctic-subwam-info.json)
             echo 'Template data:'
             jq -n \
               --arg tag "$TAG" \
