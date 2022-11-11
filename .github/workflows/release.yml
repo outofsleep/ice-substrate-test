@@ -159,9 +159,10 @@ jobs:
           path: release/tmp/
       - name: Generate template data
         run: |
+            cd release/tmp/
             TAG=${{ github.event.inputs.tag }}
             SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
-            SUBWASM_DETAILS=$(cat arctic-subwam-info.json)
+            SUBWASM_DETAILS=$(cat arctic-info.json)
             echo 'Template data:'
             jq -n \
               --arg tag "$TAG" \
