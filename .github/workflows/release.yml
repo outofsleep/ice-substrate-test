@@ -160,6 +160,7 @@ jobs:
       - name: Generate template data
         run: |
             cd release/tmp/
+            mv ice-binary-x86_64-unknown-linux-gnu ice-node
             TAG=${{ github.event.inputs.tag }}
             SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
             SUBWASM_DETAILS=$(cat arctic-info.json)
