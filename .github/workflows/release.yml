@@ -107,24 +107,35 @@ jobs:
           path: release/tmp/
       - name: Generate template data
         run: |
+            mkdir -p runtime
+            mv release/tmp/arctic-runtime/*.compact.compressed.wasm runtime/
+            mv release/tmp/arctic-runtime/*.compact.wasm runtime/
             cd release/tmp/
+            TAG=${{ github.event.inputs.tag }}
+            SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
+            SUBWASM_DETAILS=$(cat arctic-info.json)
             echo 'Template data:'
             jq -n \
-              --arg tag "${{ github.event.inputs.tag }}" \
-              --arg srtool_details "$(cat arctic-srtool-digest.json)" \
-              --arg subwasm_details "$(cat arctic-info.json)" \
+              --arg tag "$TAG" \
+              --arg srtool_details "$SRTOOL_DETAILS" \
+              --arg subwasm_details "$SUBWASM_DETAILS" \
               '{
                 tag: $tag,
                 srtool_details: $srtool_details,
                 subwasm_details: $subwasm_details
               }' | tee template_data.json
+            cd ../../
+      - name: Render release page
+        uses: jayamanikharyono/jinja-action@v0.1
+        with:
+          datafile: release/tmp/template_data.json
+          path: .github/release-template.md
 
       - name: Publish github release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ${{ steps.srtool_build.outputs.wasm }}
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            runtime/*
           body_path: ".github/release-template.md"
           tag_name: ${{ github.event.inputs.tag }}
           name: "${{ github.event.inputs.tag }}"
