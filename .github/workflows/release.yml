@@ -79,58 +79,11 @@ jobs:
             ${{ matrix.chain }}-metadata.json
             ${{ matrix.chain }}-diff.txt
 
-  build_binary:
-    name: Build binary
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-        - x86_64-unknown-linux-gnu
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-      
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          target: ${{ matrix.target }}
-          override: true
-          
-      - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          default: true
-          profile: minimal
-          target: ${{ matrix.target }}
-          toolchain: stable
-          
-      - name: Install WASM target (for runtime building)
-        shell: bash
-        run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_TOOLCHAIN }}
-     
-      - name: Build optimized binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked --target ${{ matrix.target }}
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: ice-binary-${{ matrix.target }}
-          path: target/x86_64-unknown-linux-gnu/release/ice-node
-
   release:
     name: Build and publish Runtime
     runs-on: ubuntu-latest
     
     needs:
-      - build_binary
       - build_runtime
 
     steps:
@@ -148,11 +101,6 @@ jobs:
         run: |
           mkdir -p release/tmp/
           cd release/tmp/
-      - name: get x86_64 binary
-        uses: actions/download-artifact@v2
-        with:
-          name: ice-binary-x86_64-unknown-linux-gnu
-          path: release/tmp/
       - uses: actions/download-artifact@v2
         with: 
           name: arctic-runtime
@@ -160,15 +108,11 @@ jobs:
       - name: Generate template data
         run: |
             cd release/tmp/
-            mv ice-binary-x86_64-unknown-linux-gnu ice-node
-            TAG=${{ github.event.inputs.tag }}
-            SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
-            SUBWASM_DETAILS=$(cat arctic-info.json)
             echo 'Template data:'
             jq -n \
-              --arg tag "$TAG" \
-              --arg srtool_details "$SRTOOL_DETAILS" \
-              --arg subwasm_details "$SUBWASM_DETAILS" \
+              --arg tag "${{ github.event.inputs.tag }}" \
+              --arg srtool_details "$(cat arctic-srtool-digest.json)" \
+              --arg subwasm_details "$(cat arctic-info.json)" \
               '{
                 tag: $tag,
                 srtool_details: $srtool_details,
@@ -179,7 +123,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ice-node
             ${{ steps.srtool_build.outputs.wasm }}
             ${{ steps.srtool_build.outputs.wasm_compressed }}
           body_path: ".github/release-template.md"
