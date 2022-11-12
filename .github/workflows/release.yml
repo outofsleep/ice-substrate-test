@@ -108,6 +108,8 @@ jobs:
       - name: Generate template data
         run: |
             mkdir -p runtime
+            ls -lrt
+            ls -lrt release/tmp/
             mv release/tmp/arctic-runtime/*.compact.compressed.wasm runtime/
             mv release/tmp/arctic-runtime/*.compact.wasm runtime/
             cd release/tmp/
