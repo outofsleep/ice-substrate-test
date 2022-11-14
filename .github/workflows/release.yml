@@ -147,8 +147,7 @@ jobs:
         run: |
           mkdir -p release/tmp/arctic
           mkdir -p binary
-          mkdir -p release/tmp/arctic      
-          cd release/tmp/
+          mkdir -p release/tmp/snow
        
       - uses: actions/download-artifact@v2
         with:
