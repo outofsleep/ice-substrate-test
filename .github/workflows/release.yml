@@ -107,11 +107,11 @@ jobs:
           path: release/tmp/
       - name: Generate template data
         run: |
-            mkdir -p runtime
+            mkdir -p wasm
             ls -lrt
-            ls -lrt release/tmp/
-            mv release/tmp/arctic-runtime/*.compact.compressed.wasm runtime/
-            mv release/tmp/arctic-runtime/*.compact.wasm runtime/
+            ls -lrt release/tmp/runtime/
+            mv release/tmp/runtime/arctic/target/srtool/release/wbuild/arctic-runtime/*.compact.compressed.wasm wasm/
+            mv release/tmp/runtime/arctic/target/srtool/release/wbuild/arctic-runtime/*.compact.wasm wasm/
             cd release/tmp/
             TAG=${{ github.event.inputs.tag }}
             SRTOOL_DETAILS=$(cat arctic-srtool-digest.json)
@@ -137,7 +137,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            runtime/*
+            wasm/*
           body_path: ".github/release-template.md"
           tag_name: ${{ github.event.inputs.tag }}
           name: "${{ github.event.inputs.tag }}"
