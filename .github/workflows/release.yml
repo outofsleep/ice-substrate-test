@@ -169,7 +169,7 @@ jobs:
             chmod +x binary/ice-node 
             mkdir -p wasm
             ls -lrt
-            ls-lrt binary/
+            ls -lrt binary/
             mv release/tmp/arctic/runtime/arctic/target/srtool/release/wbuild/arctic-runtime/*.compact.compressed.wasm wasm/
             mv release/tmp/arctic/runtime/arctic/target/srtool/release/wbuild/arctic-runtime/*.compact.wasm wasm/
             mv release/tmp/snow/runtime/snow/target/srtool/release/wbuild/snow-runtime/*.compact.compressed.wasm wasm/
