@@ -183,15 +183,13 @@ jobs:
             cp release/tmp/snow/snow-* wasm/
             cd release/tmp/
             TAG=${{ github.event.inputs.tag }}
-            SRTOOL_DETAILS_ARCTIC=$(cat arctic/arctic-srtool-digest.json)
-            SUBWASM_DETAILS_ARCTIC=$(cat arctic/arctic-info.json)
-            SRTOOL_DETAILS_SNOW=$(cat snow/snow-srtool-digest.json)
-            SUBWASM_DETAILS_SNOW=$(cat snow/snow-info.json)
+            SRTOOL_DETAILS=$(cat snow/arctic-srtool-digest.json)
+            SUBWASM_DETAILS=$(cat snow/snow-info.json)
             echo 'Template data:'
             jq -n \
               --arg tag "$TAG" \
-              --arg srtool_details "SNOW $SRTOOL_DETAILS_SNOW ARCTIC $SRTOOL_DETAILS_ARCTIC" \
-              --arg subwasm_details "SNOW $SUBWASM_DETAILS_SNOW ARCTIC $SUBWASM_DETAILS_ARCTIC" \
+              --arg srtool_details "$SRTOOL_DETAILS" \
+              --arg subwasm_details "$SUBWASM_DETAILS" \
               '{
                 tag: $tag,
                 srtool_details: $srtool_details,
