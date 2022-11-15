@@ -179,8 +179,8 @@ jobs:
             mv release/tmp/arctic/runtime/arctic/target/srtool/release/wbuild/arctic-runtime/*.compact.wasm wasm/
             mv release/tmp/snow/runtime/snow/target/srtool/release/wbuild/snow-runtime/*.compact.compressed.wasm wasm/
             mv release/tmp/snow/runtime/snow/target/srtool/release/wbuild/snow-runtime/*.compact.wasm wasm/
-            mv release/tmp/arctic/arctic-* wasm/
-            mv release/tmp/snow/snow-* wasm/
+            cp release/tmp/arctic/arctic-* wasm/
+            cp release/tmp/snow/snow-* wasm/
             cd release/tmp/
             TAG=${{ github.event.inputs.tag }}
             SRTOOL_DETAILS_ARCTIC=$(cat arctic/arctic-srtool-digest.json)
