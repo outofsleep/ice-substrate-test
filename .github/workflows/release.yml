@@ -107,6 +107,11 @@ jobs:
       - name: Install WASM target (for runtime building)
         shell: bash
         run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_TOOLCHAIN }}
+      
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
 
       - name: Build optimized binary
         uses: actions-rs/cargo@v1
