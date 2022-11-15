@@ -190,8 +190,8 @@ jobs:
             echo 'Template data:'
             jq -n \
               --arg tag "$TAG" \
-              --arg srtool_details "$SRTOOL_DETAILS_SNOW $SRTOOL_DETAILS_ARCTIC" \
-              --arg arctic_subwasm_details "$SUBWASM_DETAILS_SNOW $SUBWASM_DETAILS_ARCTIC" \
+              --arg srtool_details "SNOW $SRTOOL_DETAILS_SNOW ARCTIC $SRTOOL_DETAILS_ARCTIC" \
+              --arg arctic_subwasm_details "SNOW $SUBWASM_DETAILS_SNOW ARCTIC $SUBWASM_DETAILS_ARCTIC" \
               '{
                 tag: $tag,
                 srtool_details: $srtool_details,
