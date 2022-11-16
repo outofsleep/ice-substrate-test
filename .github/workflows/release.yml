@@ -183,7 +183,7 @@ jobs:
             cp release/tmp/snow/snow-* wasm/
             cd release/tmp/
             TAG=${{ github.event.inputs.tag }}
-            SRTOOL_DETAILS=$(cat snow/arctic-srtool-digest.json)
+            SRTOOL_DETAILS=$(cat snow/snow-srtool-digest.json)
             SUBWASM_DETAILS=$(cat snow/snow-info.json)
             echo 'Template data:'
             jq -n \
