@@ -117,14 +117,14 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --target x86_64-unknown-linux-musl
           
       - name: Collect binary
         run: |
           mkdir -p binary
           ls -lrt target/
           ls -lrt target/release/
-          mv target/release/ice-node binary/
+          mv target/x86_64-unknown-linux-musl/release/ice-node binary/
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
