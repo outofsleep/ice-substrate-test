@@ -113,16 +113,14 @@ jobs:
         with:
           version: '3.x'
 
-      - name: Build optimized binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked --target x86_64-unknown-linux-gnu
+      - name: Build
+        run: |
+            CARGO_INCREMENTAL=0 cargo build
           
       - name: Collect binary
         run: |
           mkdir -p binary
-          mv target/x86_64-unknown-linux-gnu/release/ice-node binary/
+          mv target/release/ice-node binary/
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
