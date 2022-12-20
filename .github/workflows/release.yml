@@ -113,9 +113,11 @@ jobs:
         with:
           version: '3.x'
 
-      - name: Build
-        run: |
-            CARGO_INCREMENTAL=0 cargo build
+      - name: Build optimized binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
           
       - name: Collect binary
         run: |
