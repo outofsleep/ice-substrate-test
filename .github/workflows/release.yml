@@ -123,9 +123,8 @@ jobs:
         run: |
           mkdir -p binary
           ls -lrt target/
-          ls -lrt target/wasm32-unknown-unknown/
-          ls -lrt target/wasm32-unknown-unknown/release/
-          mv target/wasm32-unknown-unknown/release/ice-node binary/
+          ls -lrt target/release/
+          mv target/release/ice-node binary/
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
