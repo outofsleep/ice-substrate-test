@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  BUILD_PROFILE: debug
+  RUST_TOOLCHAIN: nightly-2022-10-25    
+
+jobs:
+  build-project:
+    runs-on: ubuntu-latest
+    steps:   
+      - name: Fetch latest code
+        uses: actions/checkout@v3
+      
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          target: wasm32-unknown-unknown
+          override: true
+          
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          default: true
+          profile: minimal
+          target: wasm32-unknown-unknown
+          toolchain: stable
+          
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          
+      - name: Build
+        run: |
+            CARGO_INCREMENTAL=0 cargo build
