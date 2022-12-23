@@ -4,8 +4,8 @@ LABEL description="Snow Docker image" \
         maintainer="Web3 Labs" \
         io.parity.image.type="builder"
 RUN mkdir /snow/ice-substrate/target/release/ && \
-    cd /snow/ice-substrate/target/release/
-    wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node
+    cd /snow/ice-substrate/target/release/  && \
+    wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node && \
     chmod +x /snow/ice-substrate/target/release/ice-node
 
 COPY /snow/ice-substrate/target/release/ice-node /usr/local/bin
