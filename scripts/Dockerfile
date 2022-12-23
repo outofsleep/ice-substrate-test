@@ -1,14 +1,11 @@
 FROM ubuntu:20.04
-
-LABEL description="Snow Docker image" \
-        maintainer="Web3 Labs" \
-        io.parity.image.type="builder"
+WORKDIR /snow
 RUN apt-get update -y && \
         apt-get install -y wget && \
         wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node && \
         chmod +x ice-node
 
-COPY ice-node /usr/local/bin
+COPY /snow/ice-node /usr/local/bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /snow snow && \
         mkdir -p /data /snow/.local/share && \
