@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:latest
 WORKDIR /usr/local/bin/
 RUN apt-get update -y && \
         apt-get install -y wget
