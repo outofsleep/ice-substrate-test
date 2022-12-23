@@ -1,10 +1,10 @@
 FROM ubuntu:20.04
-WORKDIR /snow
+WORKDIR /
 RUN apt-get update -y && \
-        apt-get install -y wget && \
-        wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node && \
-        chmod +x ice-node && /
-        cp ice-node /usr/local/bin
+        apt-get install -y wget
+RUN wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node
+RUN chmod +x ice-node
+COPY ice-node /usr/local/bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /snow snow && \
         mkdir -p /data /snow/.local/share && \
