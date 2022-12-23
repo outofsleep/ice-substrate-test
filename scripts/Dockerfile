@@ -3,9 +3,8 @@ WORKDIR /snow
 RUN apt-get update -y && \
         apt-get install -y wget && \
         wget https://github.com/web3labs/ice-substrate/releases/download/v0.4.58/ice-node && \
-        chmod +x ice-node
-
-COPY /snow/ice-node /usr/local/bin
+        chmod +x ice-node && /
+        cp /snow/ice-node /usr/local/bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /snow snow && \
         mkdir -p /data /snow/.local/share && \
