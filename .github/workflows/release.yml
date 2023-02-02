@@ -113,14 +113,15 @@ jobs:
         with:
           version: '3.x'
 
-      - name: Rust MUSL Builder
-        uses: NSCoder/rust-musl-action@v1.0.0
+      - name: Build optimized binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
           
       - name: Collect binary
         run: |
           mkdir -p binary
-          ls -lrt target/
-          ls -lrt target/release/
           mv target/release/ice-node binary/
 
       - name: Upload binary
