@@ -29,7 +29,7 @@ pallet-evm = { git = "https://github.com/web3labs/frontier", branch = "polkadot-
 [dev-dependencies]
 derive_more = { version = "0.99" }
 serde = { version = "1.0.140" }
-sha3 = "0.10.1"
+sha3 = "0.10.4"
 evm = { version = "0.37.0" }
 similar-asserts = { version = "1.1.0" }
 
